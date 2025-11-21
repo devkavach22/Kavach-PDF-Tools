@@ -31,6 +31,14 @@ import ManageUsersPage from "./pages/ManageUsers";
 import SystemSettingsPage from "./pages/SystemSettings";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import Features from "./pages/Features";
+import APIPage from "./pages/API";
+import Integrations from "./pages/Integrations";
+import CookiesPolicy from "./pages/CookiesPolicy";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsServices from "./pages/TermsServices";
+import Security from "./pages/Security";
+import Pricing from "./pages/Pricing";
 
 
 const queryClient = new QueryClient();
@@ -70,6 +78,14 @@ const App = () => (
           <Route path="/files" element={<FileManagement />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/features" element={<Features />} />
+          <Route path="/api-working" element={<APIPage />} />
+          <Route path="/integration" element={<Integrations />} />
+          <Route path="/cookie-policy" element={<CookiesPolicy />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/terms-services" element={<TermsServices />} />
+          <Route path="/security" element={<Security />} />
+          <Route path="/pricing" element={<Pricing />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

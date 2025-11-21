@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 // Ensure these paths exist in your project, or comment them out if testing
 import { Header } from "@/components/Header"; 
@@ -103,6 +103,7 @@ const companies = [
   { name: "Flux", icon: Zap },
 ];
 
+// Updated with specific routes
 const pdfTools = [
   {
     title: "E-Sign PDF",
@@ -110,6 +111,7 @@ const pdfTools = [
     icon: FileSignature,
     color: "text-orange-400",
     gradient: "from-orange-500/20",
+    route: "/tools/pdf-signature"
   },
   {
     title: "PDF to Word",
@@ -117,6 +119,7 @@ const pdfTools = [
     icon: FileText,
     color: "text-red-400",
     gradient: "from-red-500/20",
+    route: "/tools/pdf-word"
   },
   {
     title: "Optimize PDF",
@@ -124,6 +127,7 @@ const pdfTools = [
     icon: Minimize2,
     color: "text-amber-400",
     gradient: "from-amber-500/20",
+    route: "/tools/optimize"
   },
   {
     title: "Merge PDF",
@@ -131,6 +135,7 @@ const pdfTools = [
     icon: Combine,
     color: "text-orange-300",
     gradient: "from-orange-400/20",
+    route: "/tools/merge"
   },
   {
     title: "Split PDF",
@@ -138,6 +143,7 @@ const pdfTools = [
     icon: Split,
     color: "text-red-300",
     gradient: "from-red-400/20",
+    route: "/tools/split"
   },
   {
     title: "PDF to JPG",
@@ -145,6 +151,7 @@ const pdfTools = [
     icon: ImageIcon,
     color: "text-amber-300",
     gradient: "from-amber-400/20",
+    route: "/tools/pdf-image"
   },
 ];
 
@@ -225,6 +232,7 @@ const GradientBlob = ({ className }: { className?: string }) => (
 
 export default function Landing() {
   const [init, setInit] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     initParticlesEngine(async (engine) => {
@@ -237,6 +245,20 @@ export default function Landing() {
   const { scrollY } = useScroll();
   const yHero = useTransform(scrollY, [0, 500], [0, 200]);
   const opacityHero = useTransform(scrollY, [0, 300], [1, 0]);
+
+  // Helper to handle tool navigation with auth check
+  const handleToolClick = (route: string) => {
+    // Placeholder for auth check. 
+    // Ideally, check your actual Auth Context or Redux state here.
+    const isAuthenticated = localStorage.getItem("user_uid"); 
+    
+    if (isAuthenticated) {
+      navigate(route);
+    } else {
+      // If not authenticated, redirect to auth (login/register)
+      navigate("/auth");
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-[#0f172a] text-slate-100 font-sans selection:bg-orange-500/30 selection:text-orange-100 overflow-x-hidden relative">
@@ -322,6 +344,7 @@ export default function Landing() {
               size="lg" 
               className="h-14 px-10 rounded-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-400 hover:to-red-500 text-white text-lg font-bold shadow-[0_0_40px_-10px_rgba(249,115,22,0.5)] hover:shadow-[0_0_60px_-15px_rgba(249,115,22,0.7)] hover:scale-105 transition-all duration-300 border-0"
             >
+              {/* Assuming /tools should generally be accessible, but individual tools are protected */}
               <Link to="/tools" className="flex items-center gap-2">
                 Start Processing <ArrowRight className="w-5 h-5" />
               </Link>
@@ -377,7 +400,8 @@ export default function Landing() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: idx * 0.05 }}
-                className="group relative"
+                className="group relative cursor-pointer"
+                onClick={() => handleToolClick(tool.route)} 
               >
                 <div className="relative h-full p-6 rounded-2xl bg-slate-900/50 border border-white/5 hover:border-orange-500/30 transition-all duration-500 overflow-hidden group-hover:-translate-y-1 group-hover:shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)]">
                    <div className={`absolute -right-10 -top-10 w-40 h-40 bg-gradient-to-br ${tool.gradient} blur-[60px] opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
@@ -592,12 +616,14 @@ export default function Landing() {
                    whileInView={{ opacity: 1, y: 0 }}
                    viewport={{ once: true }}
                    transition={{ delay: idx * 0.1 }}
-                   className={`relative p-8 rounded-3xl border transition-all duration-300 
+                   className={`relative p-8 rounded-3xl border transition-all duration-300 cursor-pointer 
                      ${plan.highlight 
                        ? 'bg-slate-900 border-orange-500/50 shadow-[0_0_60px_-15px_rgba(249,115,22,0.3)] scale-105 z-10' 
                        : 'bg-slate-900/50 border-white/5 hover:border-white/20'
                      }
                    `}
+                   // Click on pricing card redirects to the dedicated Pricing page
+                   onClick={() => navigate("/pricing")}
                 >
                    {plan.highlight && (
                       <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-bold uppercase tracking-widest rounded-full shadow-lg">
@@ -675,17 +701,6 @@ export default function Landing() {
                  <p className="text-xl text-slate-400 mb-10 leading-relaxed">
                     No credit card required. Get instant access to our core PDF tools and experience the speed of client-side processing.
                  </p>
-
-                 <div className="flex flex-col sm:flex-row justify-center gap-4">
-                    <Button size="lg" className="h-16 px-8 text-lg rounded-full bg-orange-500 hover:bg-orange-600 text-white shadow-xl shadow-orange-500/20 transition-all hover:scale-105">
-                       <Link to="/auth" className="flex items-center gap-2">
-                          Create Free Account <ArrowRight size={20} />
-                       </Link>
-                    </Button>
-                    <Button size="lg" className="h-16 px-8 text-lg rounded-full bg-orange-700 hover:bg-orange-600 text-white shadow-xl shadow-orange-500/20 transition-all hover:scale-105">
-                       <Link to="/contact">Talk to Sales</Link>
-                    </Button>
-                 </div>
                  
                  <p className="mt-8 text-sm text-slate-500">
                     Trusted by developers and businesses worldwide.

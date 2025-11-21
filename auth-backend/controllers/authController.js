@@ -1,10 +1,10 @@
 import User from "../models/Users.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import crypto from "crypto";
+// import crypto from "crypto";
 import { sendEmail } from "../utils/sendEmail.js";
-import { error } from "console";
-import { send } from "vite";
+// import { error } from "console";
+// import { send } from "vite";
 
 export const register = async(req, res)=>{
     try{
@@ -78,43 +78,57 @@ export const forgotPassword = async (req,res) => {
     if (!user)
         return res.status(404).json({error: "This email is not registered with us" });
 
-    const token = crypto.randomBytes(32).toString("hex");
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-    user.resetPasswordToken = token;
-    user.resetPasswordExpires = Date.now() + 10*60*1000;
-    await user.save();
+    user.otp = otp;
+        user.otpExpires = Date.now() + 5 * 60 * 1000; // 5 mins
+        await user.save();
 
-    const resetURL = `${process.env.CLIENT_URL}/reset-password`;
+        // Send OTP email
+        await sendEmail(
+            user.email,
+            "Your Password Reset OTP",
+            `<h3>Your OTP is <b>${otp}</b></h3><p>This OTP is valid for 5 minutes.</p>`
+        );
 
-    // await sendEmail(
-    //     user.email,
-    //     "Reset Your Password",
-    //     `
-    //         <p> Ypu resquested to reset your password.</p>
-    //         <p>Click the link below:</p>
-    //         <a href="${resetURL}">${resetURL}</a>
-    //         <p> This link is vaild for 10 minutes.</p>
-    //     `
-    // );
+        return res.json({ message: "OTP has been sent to your registered email." });
 
-    res.json({error: "Password reset email sent to registered email id."});
+    // const token = crypto.randomBytes(32).toString("hex");
+
+    // user.resetPasswordToken = token;
+    // user.resetPasswordExpires = Date.now() + 10*60*1000;
+    // await user.save();
+
+    // const resetURL = `${process.env.CLIENT_URL}/reset-password`;
+
+    // // await sendEmail(
+    // //     user.email,
+    // //     "Reset Your Password",
+    // //     `
+    // //         <p> Ypu resquested to reset your password.</p>
+    // //         <p>Click the link below:</p>
+    // //         <a href="${resetURL}">${resetURL}</a>
+    // //         <p> This link is vaild for 10 minutes.</p>
+    // //     `
+    // // );
+
+    // res.json({error: "Password reset email sent to registered email id."});
 };
 
 export const resetPassword = async ( req,res) => {
     // const {token} = req.params;
-    const { newPassword } = req.body;
+    const { email,newPassword } = req.body;
 
-    const user = await User.findOne({
-        resetPasswordToken: token,
-        resetPasswordExpires: {$gt: Date.now()}
-    });
+    const user = await User.findOne({ email });
 
     if (!user)
-        return res.status(400).json({error: "Reset password link is invalid or expired"});
+        return res.status(400).json({error: "User not found with this email."});
 
     user.password = await bcrypt.hash(newPassword,10);
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpires = undefined;
+    user.otp=undefined;
+    user.otpExpires=undefined;
+    // user.resetPasswordToken = undefined;
+    // user.resetPasswordExpires = undefined;
 
     await user.save();
 
@@ -168,5 +182,25 @@ export const changePassword = async (req,res) => {
     catch (err)
     {
         return res.status(500).json({error:err.message});
+    }
+};
+
+export const verifyOtp = async (req, res) => {
+    try {
+        const { email, otp } = req.body;
+
+        const user = await User.findOne({ email });
+        if (!user) return res.status(404).json({ error: "User not found" });
+
+        if (user.otp !== otp)
+            return res.status(400).json({ error: "Invalid OTP" });
+
+        if (user.otpExpires < Date.now())
+            return res.status(400).json({ error: "OTP has expired" });
+
+        return res.json({ message: "OTP verified successfully" });
+
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
     }
 };

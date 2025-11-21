@@ -24,7 +24,9 @@ const UserSchema = new mongoose.Schema({
     },
     // Your existing fields for password reset
     resetPasswordToken: String,
-    resetPasswordExpires: Date
+    resetPasswordExpires: Date,
+    otp:String,
+    otpExpires:Date,
 }, { timestamps: true }); // Adds createdAt and updatedAt fields automatically
 
 const User = mongoose.model("User", UserSchema);

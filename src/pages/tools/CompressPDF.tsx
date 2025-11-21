@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import axios from "axios";
+import axios from "axios"; // Import axios
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -11,13 +11,11 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { motion } from "framer-motion";
 
-// Define the expected token (From your Postman snippet)
-const HARDCODED_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5MWM0MjYzYmJkNGExNmY0MjdmYzBmNSIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzYzNzAwNDQwLCJleHAiOjE3NjM3MTg0NDB9.S_mjID6OlhUK-9UUhsPh6vH6Tsc86XgInCahQGrmh9Q";
-
+// Interface for the expected backend response
 interface CompressedFileResponse {
   filename: string;
-  originalSize?: string;
-  compressedSize?: string;
+  originalSize?: string; // Optional, depending on what your API returns
+  compressedSize?: string; // Optional
   downloadUrl?: string;
 }
 
@@ -29,13 +27,14 @@ export default function CompressPDF() {
   
   const { toast } = useToast();
 
+  // Auth placeholders
   const isAuthenticated = true;
   const isAdmin = false;
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
-      setCompressedFile(null);
+      setCompressedFile(null); // Reset previous results if new file selected
       toast({
         title: "File uploaded",
         description: `${e.target.files[0].name} ready to compress`,
@@ -58,33 +57,36 @@ export default function CompressPDF() {
     try {
       const formData = new FormData();
       formData.append('files', file);
+      // Assuming backend accepts 'level' or similar. If not, the backend might just use defaults.
+      // We append it just in case the backend logic uses it.
       formData.append('level', compressionLevel); 
 
-      // Use the hardcoded token for now to bypass 403 error
-      // In production, replace HARDCODED_TOKEN with localStorage.getItem('token')
+      // Get token from localStorage or your auth management system
+      const token = localStorage.getItem('token'); 
+
       const response = await axios.post('http://localhost:5000/api/pdf/compress-pdf', formData, {
         headers: {
-          'Authorization': HARDCODED_TOKEN, // Sending raw token as per your Postman snippet
+          'Authorization': token ? `Bearer ${token}` : '', // Ensure you handle the Bearer prefix if needed
           'Content-Type': 'multipart/form-data'
         }
       });
 
+      // Assuming response.data contains the filename needed for download
+      // Adjust this based on your exact API response structure
       console.log("Compression Response:", response.data);
-      setCompressedFile(response.data); 
+      
+      setCompressedFile(response.data); // Save the response data
       
       toast({
         title: "Success!",
         description: "PDF compressed successfully.",
       });
 
-    } catch (error: any) {
+    } catch (error) {
       console.error(error);
-      // Helper to see exactly what the server said
-      const errorMessage = error.response?.data?.message || "There was an error compressing your file.";
-      
       toast({
         title: "Compression Failed",
-        description: errorMessage,
+        description: "There was an error compressing your file.",
         variant: "destructive",
       });
     } finally {
@@ -96,20 +98,24 @@ export default function CompressPDF() {
     if (!compressedFile || !compressedFile.filename) return;
 
     try {
+      const token = localStorage.getItem('token');
+      
       const response = await axios.get(`http://localhost:5000/api/pdf/download/${compressedFile.filename}`, {
-        responseType: 'blob',
+        responseType: 'blob', // Important for file downloads
         headers: {
-          'Authorization': HARDCODED_TOKEN // Sending raw token
+          'Authorization': token ? `Bearer ${token}` : ''
         }
       });
 
+      // Create a link to download the blob
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', compressedFile.filename);
+      link.setAttribute('download', compressedFile.filename); // Use the filename from the API
       document.body.appendChild(link);
       link.click();
       
+      // Clean up
       link.parentNode?.removeChild(link);
       window.URL.revokeObjectURL(url);
 
@@ -131,6 +137,7 @@ export default function CompressPDF() {
   const handleReset = () => {
     setFile(null);
     setCompressedFile(null);
+    // Reset file input value
     const fileInput = document.getElementById('file-upload') as HTMLInputElement;
     if (fileInput) fileInput.value = '';
   };
@@ -251,7 +258,7 @@ export default function CompressPDF() {
                             {compressedFile.filename}
                           </span>
                         </div>
-                        {/* Size comparison section - conditional */}
+                        {/* If backend returns size data, display a comparison here */}
                         {compressedFile.originalSize && compressedFile.compressedSize && (
                            <div className="grid grid-cols-2 gap-4">
                               <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-center">

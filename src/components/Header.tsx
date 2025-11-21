@@ -9,7 +9,12 @@ import {
   Users,
   Menu,
   X,
-  Sparkles
+  Sparkles,
+  Zap,         // Features
+  CreditCard,  // Pricing
+  Code,        // API
+  Blocks,      // Integration
+  Home         // Added for Overview/Home
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,7 +36,7 @@ interface HeaderProps {
 }
 
 export const Header = ({
-  isAuthenticated = true,
+  isAuthenticated = false,
   isAdmin = false,
 }: HeaderProps) => {
   const location = useLocation();
@@ -39,9 +44,6 @@ export const Header = ({
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
-
-  // Check if we are on the landing page
-  const isLandingPage = currentPath === "/";
 
   // Handle scroll effect
   useEffect(() => {
@@ -67,23 +69,43 @@ export const Header = ({
     }
   };
 
+  // --- MENU CONFIGURATIONS ---
+  
+  // Menu for Visitors (Unauthenticated)
+  const publicMenuItems = [
+    { title: "Overview", icon: Home, href: "/" }, // Added "Overview" for "/" path
+    { title: "Features", icon: Zap, href: "/features" },
+    { title: "Pricing", icon: CreditCard, href: "/pricing" },
+    { title: "API", icon: Code, href: "/api" },
+    { title: "Integration", icon: Blocks, href: "/integration" },
+  ];
+
+  // Menu for Logged In Users
   const userMenuItems = [
     { title: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
     { title: "Tools", icon: FileText, href: "/tools" },
-    { title: "Files", icon: FolderOpen, href: "/files" },
+    { title: "File Management", icon: FolderOpen, href: "/files" },
   ];
 
+  // Menu for Admins
   const adminMenuItems = [
     { title: "Dashboard", icon: LayoutDashboard, href: "/admin" },
     { title: "Manage Users", icon: Users, href: "/manage-user" },
     { title: "System Settings", icon: Settings, href: "/system-setting" },
   ];
 
-  const menuItems = isAdmin ? adminMenuItems : userMenuItems;
+  // Logic to determine which menu to show
+  let menuItems;
+  if (!isAuthenticated) {
+    menuItems = publicMenuItems;
+  } else {
+    menuItems = isAdmin ? adminMenuItems : userMenuItems;
+  }
 
-  // --- UPDATED LOGIC HERE ---
-  // Checks if exact match OR if the current path is a sub-path (e.g. /tools/split)
+  // Checks if exact match OR if the current path is a sub-path
+  // Special handling ensures "Overview" (/) isn't highlighted on every other page
   const isActive = (path: string) => {
+    if (path === "/" && currentPath !== "/") return false;
     return currentPath === path || currentPath.startsWith(`${path}/`);
   };
 
@@ -108,48 +130,46 @@ export const Header = ({
           />
         </Link>
 
-        {/* Desktop Navigation - Hidden on Landing Page */}
-        {isAuthenticated && !isLandingPage && (
-          <div className="hidden md:block absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-            <nav className="flex items-center p-1.5 rounded-full bg-slate-900/50 border border-white/10 backdrop-blur-xl shadow-xl shadow-black/20">
-              {menuItems.map((item) => (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  className="relative px-5 py-2 rounded-full text-sm font-medium transition-colors group"
-                >
-                  {isActive(item.href) && (
-                    <motion.div
-                      layoutId="activeTab"
-                      className="absolute inset-0 bg-gradient-to-r from-orange-600 to-red-600 rounded-full shadow-[0_0_20px_rgba(234,88,12,0.3)]"
-                      transition={{
-                        type: "spring",
-                        bounce: 0.2,
-                        duration: 0.6,
-                      }}
-                    />
+        {/* Desktop Navigation */}
+        <div className="hidden md:block absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+          <nav className="flex items-center p-1.5 rounded-full bg-slate-900/50 border border-white/10 backdrop-blur-xl shadow-xl shadow-black/20">
+            {menuItems.map((item) => (
+              <Link
+                key={item.href}
+                to={item.href}
+                className="relative px-5 py-2 rounded-full text-sm font-medium transition-colors group"
+              >
+                {isActive(item.href) && (
+                  <motion.div
+                    layoutId="activeTab"
+                    className="absolute inset-0 bg-gradient-to-r from-orange-600 to-red-600 rounded-full shadow-[0_0_20px_rgba(234,88,12,0.3)]"
+                    transition={{
+                      type: "spring",
+                      bounce: 0.2,
+                      duration: 0.6,
+                    }}
+                  />
+                )}
+                <span
+                  className={cn(
+                    "relative z-10 flex items-center gap-2 transition-colors duration-200",
+                    isActive(item.href)
+                      ? "text-white"
+                      : "text-slate-400 group-hover:text-white"
                   )}
-                  <span
-                    className={cn(
-                      "relative z-10 flex items-center gap-2 transition-colors duration-200",
-                      isActive(item.href)
-                        ? "text-white"
-                        : "text-slate-400 group-hover:text-white"
-                    )}
-                  >
-                    <item.icon className="w-4 h-4" />
-                    {item.title}
-                  </span>
-                </Link>
-              ))}
-            </nav>
-          </div>
-        )}
+                >
+                  <item.icon className="w-4 h-4" />
+                  {item.title}
+                </span>
+              </Link>
+            ))}
+          </nav>
+        </div>
 
         {/* Right Actions */}
         <div className="flex items-center gap-4 relative z-50">
-          {/* Show Profile Dropdown ONLY if authenticated AND NOT on Landing Page */}
-          {isAuthenticated && !isLandingPage ? (
+          {/* Show Profile Dropdown ONLY if authenticated */}
+          {isAuthenticated ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -190,7 +210,7 @@ export const Header = ({
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            /* CTA for Unauthenticated or Landing Page */
+            /* CTA for Unauthenticated Users */
             <Button
               asChild
               className="hidden md:flex h-10 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-400 hover:to-red-500 text-white rounded-full font-bold px-6 shadow-[0_0_20px_-5px_rgba(249,115,22,0.4)] transition-all duration-300 hover:scale-105 border-0"
@@ -223,31 +243,33 @@ export const Header = ({
             className="md:hidden bg-[#0f172a] border-b border-white/10 overflow-hidden"
           >
             <div className="flex flex-col p-4 gap-2">
-              {isAuthenticated && !isLandingPage ? (
-                menuItems.map((item) => (
-                  <Link
-                    key={item.href}
-                    to={item.href}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={cn(
-                      "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors font-medium",
-                      isActive(item.href)
-                        ? "bg-orange-500/10 text-orange-500 border border-orange-500/20"
-                        : "text-slate-400 hover:text-white hover:bg-white/5"
-                    )}
-                  >
-                    <item.icon className="w-5 h-5" />
-                    {item.title}
-                  </Link>
-                ))
-              ) : (
+              {menuItems.map((item) => (
                 <Link
-                  to="/auth"
+                  key={item.href}
+                  to={item.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-center w-full bg-gradient-to-r from-orange-500 to-red-600 text-white font-bold py-3 rounded-lg shadow-lg shadow-orange-900/20"
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors font-medium",
+                    isActive(item.href)
+                      ? "bg-orange-500/10 text-orange-500 border border-orange-500/20"
+                      : "text-slate-400 hover:text-white hover:bg-white/5"
+                  )}
                 >
-                  Get Started
+                  <item.icon className="w-5 h-5" />
+                  {item.title}
                 </Link>
+              ))}
+
+              {!isAuthenticated && (
+                <div className="mt-2 pt-2 border-t border-white/10">
+                  <Link
+                    to="/auth"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center justify-center w-full bg-gradient-to-r from-orange-500 to-red-600 text-white font-bold py-3 rounded-lg shadow-lg shadow-orange-900/20"
+                  >
+                    Get Started
+                  </Link>
+                </div>
               )}
             </div>
           </motion.div>

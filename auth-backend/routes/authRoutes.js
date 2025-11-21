@@ -161,5 +161,48 @@ router.get("/files/:folderId",auth,async(req,res) => {
 // });
 
 router.put("/change-password",changePassword);
+router.put("/verify-otp",changePassword);
+
+// router.post("/send-otp",auth,async(req,res) => {
+//     try
+//     {
+//         const user = await User.findById(req.user.id);
+//         if (!user) return res.status(404).json({ error: "User not found"});
+//         // Generate OTP
+//         const otp = Math.floor(100000 + Math.random() * 900000).toString();
+//         const otpExpires = Date.now() + 10 * 60 * 1000; // 10 minutes from now
+//         user.otp = otp;
+//         user.otpExpires = otpExpires;
+//         await user.save();
+
+//         res.json({ message: "OTP sent to your registered email id.", otp }); // In production, do not send OTP in response
+//     }
+//     catch (error)
+//     {
+//         res.status(500).json({ error: error.message });
+//     }   
+// });
+
+// router.post("/verify-otp",auth,async(req,res) => {
+//     try
+//     {
+//         const { otp } = req.body;
+//         const user = await User.findById(req.user.id);
+//         if (!user) return res.status(404).json({ error: "User not found"});     
+//         if (user.otp !== otp || Date.now() > user.otpExpires)
+//         {
+//             return res.status(400).json({ error: "Invalid or expired OTP"});
+//         } 
+//         // OTP is valid
+//         user.otp = undefined;
+//         user.otpExpires = undefined;
+//         await user.save();    
+//         res.json({ message: "OTP verified successfully."});
+//     }
+//     catch (error)
+//     {
+//         res.status(500).json({ error: error.message });
+//     } 
+// });
 
 export default router;

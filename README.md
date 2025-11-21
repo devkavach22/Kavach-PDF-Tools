@@ -1,15 +1,10 @@
-# Welcome to your Lovable project
+# Welcome to your Kavach PDF project
 
 ## Project info
-
 
 ## How can I edit this code?
 
 There are several ways of editing your application.
-
-**Use Lovable**
-
-Changes made via Lovable will be committed automatically to this repo.
 
 **Use your preferred IDE**
 

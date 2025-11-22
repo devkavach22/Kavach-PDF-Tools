@@ -10,23 +10,35 @@ dotenv.config();
 
 const app = express();
 
+const MONGO_URL = process.env.MONGO_URL;
+const FRONTEND_URL = process.env.FRONTEND_URL;
+
+const allowedOrigins = [
+    "http://localhost:8080",           // Local fronten          // Production frontend (domain)
+];
 
 app.use(cors({
-    origin: [process.env.FRONTEND_URL, "http://localhost:8080"],
+    origin: allowedOrigins,
     credentials: true
 }));
 
+// app.options("*")
 app.use(express.json());
 app.use(cookieParser());
 
 app.use("/api/auth",authRoutes);
 app.use("/api/pdf",pdfRoutes);
 
-mongoose.connect(process.env.MONGO_URL)
-    .then(() => {
-        console.log("Connected to MongoDB");
-        app.listen(process.env.PORT, () => 
-        console.log(`Server running on port ${process.env.PORT}`)
-    );
-    })
-    .catch(err => console.log(err));
+mongoose.connect(MONGO_URL, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+})
+.then(() => {
+    console.log("Connected to MongoDB");
+    app.listen(process.env.PORT, "0.0.0.0", () => {
+    console.log(`Server running on ${process.env.PORT}`);
+    });
+})
+.catch((error) => {
+    console.error("MongoDB connection error:", error);
+});

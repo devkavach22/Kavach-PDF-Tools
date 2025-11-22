@@ -10,8 +10,9 @@ import { motion, AnimatePresence, useMotionTemplate, useMotionValue } from "fram
 import Particles from "@tsparticles/react";
 import { loadSlim } from "tsparticles-slim";
 import type { Engine } from "tsparticles-engine";
-import Kavachlogo from "@/assets/kavach (3).png"; // Ensure this exists
-import axios from "axios";
+import Kavachlogo from "@/assets/kavach (3).png"; 
+// IMPORT THE CUSTOM INSTANCE
+import Instance from "@/lib/axiosInstance"; // Adjust path if necessary (e.g., "@/utils/axiosInstance")
 
 // --- Particles Config (Matched to Landing.tsx) ---
 const particlesOptions = {
@@ -82,24 +83,31 @@ export default function Auth() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    const token = localStorage.getItem("token") || "";
-    const data = JSON.stringify({ "email": loginEmail, "password": loginPassword });
-    const config = {
-      method: 'post',
-      maxBodyLength: Infinity,
-      url: 'http://localhost:5000/api/auth/login',
-      headers: { 'Authorization': token, 'Content-Type': 'application/json' },
-      data : data
+
+    // Payload object (Axios handles stringifying)
+    const payload = { 
+        email: loginEmail, 
+        password: loginPassword 
     };
 
     try {
-      const response = await axios.request(config);
+      // Using Instance: BaseURL is already set, Headers are set
+      const response = await Instance.post('/auth/login', payload);
+      
       if (response.data.token) {
-        localStorage.setItem("token", response.data.token);
+        // CHANGED: using 'authToken' to match axiosInstance.ts logic
+        localStorage.setItem("authToken", response.data.token);
       }
+      
       localStorage.setItem("user", JSON.stringify(response.data));
-      toast({ title: "Access Granted", description: response.data.message || "Welcome back to Kavach Protocol." });
+      
+      toast({ 
+        title: "Access Granted", 
+        description: response.data.message || "Welcome back to Kavach Protocol." 
+      });
+      
       navigate("/dashboard");
+
     } catch (error: any) {
       console.log(error);
       toast({
@@ -115,30 +123,33 @@ export default function Auth() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    const token = localStorage.getItem("token") || "";
-    const data = JSON.stringify({
-      "name": signupName,
-      "email": signupEmail,
-      "password": signupPassword,
-      "role": "user"
-    });
-    const config = {
-      method: 'post',
-      maxBodyLength: Infinity,
-      url: 'http://localhost:5000/api/auth/register',
-      headers: { 'Authorization': token, 'Content-Type': 'application/json' },
-      data : data
+
+    // Payload object
+    const payload = {
+      name: signupName,
+      email: signupEmail,
+      password: signupPassword,
+      role: "user"
     };
 
     try {
-      const response = await axios.request(config);
+      // Using Instance
+      const response = await Instance.post('/auth/register', payload);
+      
       localStorage.setItem("registrationData", JSON.stringify(response.data));
-      toast({ title: "Identity Verified", description: "Your secure workspace is initializing. Please log in." });
+      
+      toast({ 
+        title: "Identity Verified", 
+        description: "Your secure workspace is initializing. Please log in." 
+      });
+      
+      // Switch to login tab with pre-filled email
       setLoginEmail(signupEmail);
       setSignupName("");
       setSignupEmail("");
       setSignupPassword("");
       setActiveTab("login");
+
     } catch (error: any) {
       toast({
         title: "Signup Error",

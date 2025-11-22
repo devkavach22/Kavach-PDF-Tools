@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import axios from "axios"; 
+import Instance from "@/lib/axiosInstance"; // Imported the custom instance
 import { Header } from "@/components/Header"; 
 import { Footer } from "@/components/Footer"; 
 import {
@@ -98,7 +98,8 @@ const PIE_COLORS = ["#f97316", "#ef4444", "#f59e0b", "#64748b"]; // Orange, Red,
 
 type FolderType = { id: string; name: string; desc?: string; fileCount: number; createdAt: string; theme: string };
 type FileType = { id: string; name: string; extension: string; size: number; pageCount: string | number; path?: string; };
-const API_URL = "http://localhost:5000/api/auth";
+
+// Removed API_URL constant as it's handled in axiosInstance base URL
 
 export default function UserDashboard() {
   const [isOverlayOpen, setIsOverlayOpen] = useState(true);
@@ -118,7 +119,7 @@ export default function UserDashboard() {
 
   const handleLogout = () => {
     localStorage.removeItem("user");
-    localStorage.removeItem("token");
+    localStorage.removeItem("authToken"); // Updated to match axiosInstance
     window.location.href = "/auth";
   };
 
@@ -135,8 +136,10 @@ export default function UserDashboard() {
   const fetchFolders = async () => {
     setIsLoadingFolders(true);
     try {
-      const token = localStorage.getItem('token'); 
-      const response = await axios.get(`${API_URL}/folders`, { headers: { 'Authorization': token } });
+      // Removed manual token header, axiosInstance interceptor handles it
+      // Adjusted URL to be relative to the axiosInstance baseURL (/api)
+      const response = await Instance.get(`/auth/folders`); 
+      
       const folderData = response.data.folders || response.data;
       if (Array.isArray(folderData)) {
         const themes = ["orange", "red", "amber", "slate"];
@@ -147,7 +150,10 @@ export default function UserDashboard() {
         }));
         setFolders(mappedFolders);
       } else { setFolders([]); }
-    } catch (error: any) { if (error.response?.status === 401) handleLogout(); } 
+    } catch (error: any) { 
+        console.error("Error fetching folders:", error);
+        // 401 is handled globally by axiosInstance, but we can keep safety checks
+    } 
     finally { setIsLoadingFolders(false); }
   };
 
@@ -155,8 +161,8 @@ export default function UserDashboard() {
     if (!folderId) return;
     setIsLoadingFiles(true);
     try {
-        const token = localStorage.getItem('token');
-        const response = await axios.get(`${API_URL}/files/${folderId}`, { headers: { 'Authorization': token } });
+        // Removed manual token header
+        const response = await Instance.get(`/auth/files/${folderId}`);
         const filesData = response.data.files || response.data;
         if (Array.isArray(filesData)) {
             const mappedFiles: FileType[] = filesData.map((f: any) => ({
@@ -166,7 +172,7 @@ export default function UserDashboard() {
             }));
             setFolderFiles((prev) => ({ ...prev, [folderId]: mappedFiles }));
         }
-    } catch (error) { console.error(error); } finally { setIsLoadingFiles(false); }
+    } catch (error) { console.error("Error fetching files:", error); } finally { setIsLoadingFiles(false); }
   };
 
   useEffect(() => { if (isOverlayOpen) fetchFolders(); }, [isOverlayOpen]);
@@ -175,10 +181,10 @@ export default function UserDashboard() {
     if (!newFolderName.trim()) return;
     setIsCreating(true);
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(`${API_URL}/folder/create`, { "name": newFolderName, "desc": newFolderDesc || "Project Folder" }, { headers: { 'Authorization': token } });
+      // Removed manual token header
+      await Instance.post(`/auth/folder/create`, { "name": newFolderName, "desc": newFolderDesc || "Project Folder" });
       await fetchFolders(); setNewFolderName(""); setNewFolderDesc("");
-    } catch (error: any) { if (error.response?.status === 401) handleLogout(); } finally { setIsCreating(false); }
+    } catch (error: any) { console.error("Error creating folder:", error); } finally { setIsCreating(false); }
   };
 
   const handleOpenFolder = (folder: FolderType) => { setSelectedFolder(folder); setCurrentView("files"); fetchFolderFiles(folder.id); };
@@ -190,10 +196,17 @@ export default function UserDashboard() {
     const data = new FormData();
     Array.from(files).forEach((file) => data.append('files', file));
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(`${API_URL}/upload/${selectedFolder.id}`, data, { headers: { 'Authorization': token } });
+      // FIX: Explicitly set Content-Type to multipart/form-data to override the default application/json in axiosInstance
+      // This ensures the browser correctly sets the boundary for the file upload
+      await Instance.post(`/auth/upload/${selectedFolder.id}`, data, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
       await fetchFolderFiles(selectedFolder.id);
-    } catch (error) { console.error(error); } finally { setIsUploading(false); }
+    } catch (error) { 
+        console.error("Error uploading files:", error); 
+    } finally { setIsUploading(false); }
   };
 
   const handleDragEnter = (e: any) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); };

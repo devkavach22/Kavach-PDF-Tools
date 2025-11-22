@@ -59,28 +59,28 @@ router.get("/folders",auth,async(req,res) => {
     }
 });
 
-// router.post("/upload/:folderId",auth,upload.array("files"),async(req,res) => {
-//     try
-//     {
-//         const folderId = req.params.folderId;
+router.post("/upload/:folderId",auth,upload.array("files"),async(req,res) => {
+    try
+    {
+        const folderId = req.params.folderId;
 
-//         const filesInfo = req.files.map((file) => ({
-//             folderId,
-//             userId: req.user.id,
-//             originalName: file.originalName,
-//             storedName: file.fileName,
-//             size: file.size,
-//             extension: file.originalName.split(".").pop(),
-//             mimeType: file.mimeType,
-//         }));
+        const filesInfo = req.files.map((file) => ({
+            folderId,
+            userId: req.user.id,
+            originalName: file.originalName,
+            storedName: file.fileName,
+            size: file.size,
+            extension: file.originalName.split(".").pop(),
+            mimeType: file.mimeType,
+        }));
 
-//     }
+    }
 
-//     catch (error)
-//     {
-//         res.status(500).json({error: error.message});
-//     }
-// });
+    catch (error)
+    {
+        res.status(500).json({error: error.message});
+    }
+});
 
 router.post("/upload/:folderId", auth, upload.array("files"), async (req, res) => {
   try {
@@ -94,7 +94,7 @@ router.post("/upload/:folderId", auth, upload.array("files"), async (req, res) =
       folderId,
       userId: req.user.id,
 
-      originalName: file.originalname,     // FIXED
+      originalName: file.originalName,     // FIXED
       storedName: file.filename,           // FIXED
       size: file.size,
       

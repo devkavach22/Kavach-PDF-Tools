@@ -1,4 +1,4 @@
-import { error } from "console"; 
+// import { error } from "console"; 
 import jwt from "jsonwebtoken"; 
 export const auth = (req,res,next) => { 
     const token = req.header("Authorization"); 

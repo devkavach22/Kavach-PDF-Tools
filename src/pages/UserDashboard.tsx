@@ -7,7 +7,7 @@ import {
   FileImage, ScissorsIcon, FolderPlus, Folder, UploadCloud, X, ArrowLeft,
   CheckCircle2, Plus, LayoutGrid, ChevronRight, HardDrive, Search, MoreVertical,
   Activity, Zap, PieChart as PieIcon, BarChart3, Sparkles, File as FileIcon,
-  Loader2
+  Loader2, Eye
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,7 +29,7 @@ function formatBytes(bytes: number, decimals = 2) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(decimals < 0 ? 0 : decimals)) + ' ' + ['Bytes', 'KB', 'MB', 'GB', 'TB'][i];
 }
 
-// --- COMPONENT: SPOTLIGHT CARD (Updated Color) ---
+// --- COMPONENT: SPOTLIGHT CARD ---
 const SpotlightCard = ({ children, className = "", spotlightColor = "rgba(249, 115, 22, 0.15)" }: any) => {
   const divRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -61,7 +61,7 @@ const SpotlightCard = ({ children, className = "", spotlightColor = "rgba(249, 1
   );
 };
 
-// --- STATIC DATA (Colors Updated) ---
+// --- STATIC DATA ---
 const userStats = [
   { title: "Documents Processed", value: 47, icon: FileText, trend: "+15.3%", color: "text-orange-400", border: "group-hover:border-orange-500/50" },
   { title: "Hours Saved", value: 12.5, icon: Clock, trend: "+8.7%", color: "text-red-400", border: "group-hover:border-red-500/50" },
@@ -93,11 +93,68 @@ const toolUsageData = [
   { name: "Convert", value: 200 },
 ];
 
-// Updated Pie Colors to match theme
-const PIE_COLORS = ["#f97316", "#ef4444", "#f59e0b", "#64748b"]; // Orange, Red, Amber, Slate
+const PIE_COLORS = ["#f97316", "#ef4444", "#f59e0b", "#64748b"];
 
 type FolderType = { id: string; name: string; desc?: string; fileCount: number; createdAt: string; theme: string };
-type FileType = { id: string; name: string; extension: string; size: number; pageCount: string | number; path?: string; };
+type FileType = { id: string; name: string; extension: string; size: number; pageCount: string | number; path?: string; }; // path is important for viewing/downloading
+
+// --- COMPONENT: FILE VIEWER OVERLAY ---
+const FileViewerOverlay = ({ file, onClose }: { file: FileType; onClose: () => void }) => {
+  // Determine an icon based on extension for the viewer placeholder
+  const getFileIcon = (ext: string) => {
+    switch (ext.toLowerCase()) {
+      case 'pdf': return <FileText className="h-12 w-12 text-red-500" />;
+      case 'docx':
+      case 'doc': return <FileText className="h-12 w-12 text-blue-500" />;
+      case 'jpg':
+      case 'jpeg':
+      case 'png': return <FileImage className="h-12 w-12 text-green-500" />;
+      default: return <FileIcon className="h-12 w-12 text-slate-500" />;
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+      onClick={onClose} // Close when clicking the backdrop
+    >
+      <motion.div
+        initial={{ scale: 0.8, y: -20 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.8, y: -20 }}
+        className="w-full max-w-4xl h-[80vh] mx-4 flex flex-col rounded-xl overflow-hidden bg-[#0a0a0a] border border-white/10 shadow-2xl"
+        onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside the viewer
+      >
+        <div className="flex items-center justify-between p-4 border-b border-white/10 bg-white/5">
+          <h3 className="text-xl font-bold text-white truncate max-w-[70%]">{file.name}</h3>
+          <Button onClick={onClose} variant="ghost" className="h-10 w-10 rounded-full p-0 hover:bg-white/10 text-slate-400 hover:text-white">
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
+        
+        {/* --- Viewer Placeholder --- */}
+        <div className="flex-1 p-8 overflow-y-auto flex flex-col items-center justify-center text-center bg-grid-white/[0.03]">
+          <div className="p-8 border-2 border-dashed border-white/10 rounded-2xl bg-white/5 space-y-4">
+            {getFileIcon(file.extension)}
+            <p className="text-xl font-semibold text-white">Document Viewer Placeholder</p>
+            <p className="text-sm text-slate-400">In a real application, a library (like `react-pdf`) or an embedded iframe would render the content here.</p>
+            <div className="text-left mt-6 space-y-1 text-slate-300">
+               <p className="font-mono text-sm">Size: <span className="text-orange-400">{formatBytes(file.size)}</span></p>
+               <p className="font-mono text-sm">Pages: <span className="text-orange-400">{file.pageCount}</span></p>
+               <p className="font-mono text-sm">Path: <span className="text-orange-400 truncate max-w-xs block">{file.path || "N/A"}</span></p>
+            </div>
+          </div>
+        </div>
+
+      </motion.div>
+    </motion.div>
+  );
+};
+// --- END FILE VIEWER OVERLAY ---
+
 
 export default function UserDashboard() {
   const [isOverlayOpen, setIsOverlayOpen] = useState(true);
@@ -113,6 +170,7 @@ export default function UserDashboard() {
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [viewingFile, setViewingFile] = useState<FileType | null>(null); // NEW STATE FOR VIEWER
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleLogout = () => {
@@ -140,8 +198,11 @@ export default function UserDashboard() {
       if (Array.isArray(folderData)) {
         const themes = ["orange", "red", "amber", "slate"];
         const mappedFolders: FolderType[] = folderData.map((f: any, index: number) => ({
-          id: f._id || f.id, name: f.name, desc: f.desc,
-          fileCount: f.files ? f.files.length : 0, createdAt: f.createdAt ? new Date(f.createdAt).toLocaleDateString() : "Recently",
+          id: f._id || f.id, 
+          name: f.name, 
+          desc: f.desc,
+          fileCount: f.files ? f.files.length : 0, 
+          createdAt: f.createdAt ? new Date(f.createdAt).toLocaleDateString() : "Recently",
           theme: themes[index % themes.length] 
         }));
         setFolders(mappedFolders);
@@ -152,33 +213,45 @@ export default function UserDashboard() {
     finally { setIsLoadingFolders(false); }
   };
 
-  // --- UPDATED FETCH FILES FUNCTION ---
+  // --- UPDATED FETCH FILES FUNCTION (Corrected Mapping) ---
   const fetchFolderFiles = async (folderId: string) => {
     if (!folderId) return;
     
-    // Retrieve token from storage
     const token = localStorage.getItem("authToken");
 
     setIsLoadingFiles(true);
     try {
-        // Pass the token in the headers explicitly
         const response = await Instance.get(`/auth/files/${folderId}`, {
-            headers: {
-                'Authorization': token
-            }
+            headers: { 'Authorization': token }
         });
 
         const filesData = response.data.files || response.data;
         if (Array.isArray(filesData)) {
-            const mappedFiles: FileType[] = filesData.map((f: any) => ({
-            id: f._id || f.id, 
-            name: f.originalName || f.name || "Unknown File",
-            extension: (f.originalName || f.name || "").split('.').pop() || "",
-            size: f.size || 0, 
-            pageCount: f.pageCount || 'N/A', 
-            path: f.path
-        }));
+            const mappedFiles: FileType[] = filesData.map((f: any) => {
+                // Logic to clean storedName (remove timestamp prefix if present)
+                let cleanName = f.originalName || f.name;
+                if (!cleanName && f.storedName) {
+                    // Try to strip timestamp (e.g., "1763966783318-filename.png" -> "filename.png")
+                    const parts = f.storedName.split('-');
+                    if (parts.length > 1 && /^\d+$/.test(parts[0])) {
+                        cleanName = parts.slice(1).join('-');
+                    } else {
+                        cleanName = f.storedName;
+                    }
+                }
+                
+                return {
+                    id: f._id || f.id, 
+                    name: cleanName || "Unknown File",
+                    // Use API provided extension, or fallback to parsing name
+                    extension: f.extension || (cleanName || "").split('.').pop() || "",
+                    size: f.size || 0, 
+                    pageCount: f.pageCount || 'N/A', 
+                    path: f.path
+                };
+            });
             setFolderFiles((prev) => ({ ...prev, [folderId]: mappedFiles }));
+            return response.data.files?.length || 0;
         }
     } catch (error) { 
         console.error("Error fetching files:", error); 
@@ -201,12 +274,19 @@ export default function UserDashboard() {
   const handleOpenFolder = (folder: FolderType) => { setSelectedFolder(folder); setCurrentView("files"); fetchFolderFiles(folder.id); };
   const handleBackToFolders = () => { setCurrentView("folders"); setSelectedFolder(null); fetchFolders(); };
 
-  // --- UPDATED UPLOAD FUNCTION ---
+  // NEW FUNCTION: Open the file viewer
+  const handleViewFile = (file: FileType) => {
+    setViewingFile(file);
+  };
+  // NEW FUNCTION: Close the file viewer
+  const handleCloseViewer = () => {
+    setViewingFile(null);
+  };
+
   const handleUploadFiles = async (files: FileList) => {
     if (!selectedFolder) return;
     
     const token = localStorage.getItem("authToken");
-
     if (!token) {
       console.error("No authentication token found");
       return; 
@@ -247,6 +327,9 @@ export default function UserDashboard() {
         <motion.div animate={{ opacity: [0.3, 0.5, 0.3], scale: [1, 1.2, 1], rotate: [0, -5, 0] }} transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }} className="absolute -bottom-[10%] right-[0%] w-[50vw] h-[50vw] bg-red-600/10 rounded-full blur-[100px]" />
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay" />
       </div>
+      
+      {/* --- Document Viewer Overlay (NEW) --- */}
+      <AnimatePresence>{viewingFile && <FileViewerOverlay file={viewingFile} onClose={handleCloseViewer} />}</AnimatePresence>
 
       <AnimatePresence>
         {isOverlayOpen && (
@@ -342,7 +425,12 @@ export default function UserDashboard() {
                                  <td className="px-4 py-4 whitespace-nowrap"><Badge variant="outline" className="font-mono text-xs border-slate-700 text-slate-400">{file.extension}</Badge></td>
                                  <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-400 font-mono">{formatBytes(file.size)}</td>
                                  <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-400 font-mono">{file.pageCount}</td>
-                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"><Button size="icon" variant="ghost" className="h-8 w-8 text-slate-500 hover:text-orange-400"><Download className="h-4 w-4" /></Button><Button size="icon" variant="ghost" className="h-8 w-8 text-slate-500 hover:text-red-400"><Trash2 className="h-4 w-4" /></Button></td>
+                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                    {/* NEW: View Button */}
+                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-500 hover:text-blue-400" onClick={() => handleViewFile(file)}><Eye className="h-4 w-4" /></Button>
+                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-500 hover:text-orange-400"><Download className="h-4 w-4" /></Button>
+                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-500 hover:text-red-400"><Trash2 className="h-4 w-4" /></Button>
+                                 </td>
                                </tr>
                              ))}
                            </tbody>
@@ -357,7 +445,7 @@ export default function UserDashboard() {
       </AnimatePresence>
 
       <motion.div animate={{ filter: isOverlayOpen ? "blur(12px) brightness(0.5)" : "blur(0px) brightness(1)", scale: isOverlayOpen ? 0.95 : 1 }} transition={{ duration: 0.5 }} className="flex-1 flex flex-col relative z-10">
-        <Header isAuthenticated={true} />
+        <Header isAuthenticated={true} onLogout={handleLogout} />
         <motion.div initial={{ y: -50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="fixed top-24 right-8 z-50">
            <Button onClick={() => setIsOverlayOpen(true)} className="h-12 px-6 rounded-full bg-orange-500 text-white font-bold hover:bg-orange-400 hover:scale-105 transition-all shadow-[0_0_40px_rgba(249,115,22,0.4)] border border-orange-300/50">
               <LayoutGrid className="h-4 w-4 mr-2" /> OPEN WORKSPACE

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import axios from "axios"; // Import axios
+import Instance from "@/lib/axiosInstance"; 
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -13,10 +13,9 @@ import { motion } from "framer-motion";
 
 // Interface for the expected backend response
 interface CompressedFileResponse {
-  filename: string;
-  originalSize?: string; // Optional, depending on what your API returns
-  compressedSize?: string; // Optional
-  downloadUrl?: string;
+  filename: string;      // The filename returned by backend (e.g., "compressed_123.pdf")
+  originalSize?: string; 
+  compressedSize?: string; 
 }
 
 export default function CompressPDF() {
@@ -30,6 +29,12 @@ export default function CompressPDF() {
   // Auth placeholders
   const isAuthenticated = true;
   const isAdmin = false;
+
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    localStorage.removeItem("authToken"); 
+    window.location.href = "/auth";
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -57,25 +62,22 @@ export default function CompressPDF() {
     try {
       const formData = new FormData();
       formData.append('files', file);
-      // Assuming backend accepts 'level' or similar. If not, the backend might just use defaults.
-      // We append it just in case the backend logic uses it.
       formData.append('level', compressionLevel); 
+      
+      const token = localStorage.getItem("authToken");
 
-      // Get token from localStorage or your auth management system
-      const token = localStorage.getItem('token'); 
-
-      const response = await axios.post('http://localhost:5000/api/pdf/compress-pdf', formData, {
+      // 1. Send file to backend for compression
+      const response = await Instance.post('/pdf/compress-pdf', formData, {
         headers: {
-          'Authorization': token ? `Bearer ${token}` : '', // Ensure you handle the Bearer prefix if needed
-          'Content-Type': 'multipart/form-data'
+            'Content-Type': 'multipart/form-data', 
+            'Authorization': token ? `${token}` : '',
         }
       });
 
-      // Assuming response.data contains the filename needed for download
-      // Adjust this based on your exact API response structure
       console.log("Compression Response:", response.data);
       
-      setCompressedFile(response.data); // Save the response data
+      // 2. Store the response which contains the 'filename' needed for the download step
+      setCompressedFile(response.data); 
       
       toast({
         title: "Success!",
@@ -95,49 +97,71 @@ export default function CompressPDF() {
   };
 
   const handleDownload = async () => {
-    if (!compressedFile || !compressedFile.filename) return;
+    // Ensure we have a filename to fetch
+    if (!compressedFile || !compressedFile.filename) {
+      toast({
+        title: "Download Error",
+        description: "No compressed file found for download.",
+        variant: "destructive",
+      });
+      return;
+    }
 
+    const token = localStorage.getItem("authToken");
+    
     try {
-      const token = localStorage.getItem('token');
-      
-      const response = await axios.get(`http://localhost:5000/api/pdf/download/${compressedFile.filename}`, {
-        responseType: 'blob', // Important for file downloads
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : ''
-        }
+      toast({
+        title: "Download Started",
+        description: "Fetching your compressed file...",
       });
 
-      // Create a link to download the blob
+      // 3. Request the specific file from the backend
+      // We append the filename to the URL: /pdf/download/{compressedFilename}
+      const response = await Instance.get(`/pdf/download/${compressedFile.filename}`, {
+        headers: {
+          // Pass the Authorization header generated after login
+          'Authorization': token ? `${token}` : '',
+        },
+        // Important: Tell Axios to treat the response as binary data (Blob)
+        responseType: 'blob', 
+      });
+      
+      // 4. Create a URL for the blob
       const url = window.URL.createObjectURL(new Blob([response.data]));
+      
+      // 5. Create a temporary link to trigger the download in the browser
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', compressedFile.filename); // Use the filename from the API
+      
+      // Set the filename for the user's computer
+      link.setAttribute('download', compressedFile.filename); 
+      
       document.body.appendChild(link);
       link.click();
       
-      // Clean up
+      // Cleanup
       link.parentNode?.removeChild(link);
       window.URL.revokeObjectURL(url);
 
       toast({
-        title: "Download Started",
-        description: "Your compressed file is downloading.",
+        title: "Download Complete",
+        description: `Saved ${compressedFile.filename} to your device.`,
       });
 
     } catch (error) {
-      console.error(error);
+      console.error("Download Error:", error);
       toast({
         title: "Download Failed",
-        description: "Could not download the file.",
+        description: "Could not download the file. Check permissions.",
         variant: "destructive",
       });
     }
   };
 
+
   const handleReset = () => {
     setFile(null);
     setCompressedFile(null);
-    // Reset file input value
     const fileInput = document.getElementById('file-upload') as HTMLInputElement;
     if (fileInput) fileInput.value = '';
   };

@@ -23,7 +23,7 @@ const router = express.Router();
 
 router.post("/merge-pdf",auth,upload.array("files",10),mergePdf);
 
-router.post("/pdf-to-word",auth,upload.array("files"),pdfToWord);
+router.post("/pdf-to-word",auth,upload.single("file"),pdfToWord);
 
 router.post("/pdf-to-excel",auth,upload.array("files"),pdfToExcel);
 

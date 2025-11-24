@@ -4,12 +4,15 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Upload, FileText, ArrowRightLeft, ArrowLeft } from "lucide-react";
+import { Upload, ArrowRightLeft, ArrowLeft, Download, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
+import Instance from "@/lib/axiosInstance"; // Import axiosInstance
 
 export default function PDFToWord() {
   const [file, setFile] = useState<File | null>(null);
+  const [isConverting, setIsConverting] = useState(false);
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Auth placeholders
@@ -18,20 +21,102 @@ export default function PDFToWord() {
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+      const selectedFile = e.target.files[0];
+      setFile(selectedFile);
+      setDownloadUrl(null); // Reset download link on new file selection
       toast({
         title: "File uploaded",
-        description: `${e.target.files[0].name} ready to convert`,
+        description: `${selectedFile.name} ready to convert`,
       });
     }
   };
 
-  const handleConvert = () => {
-    if (!file) {
-      toast({ title: "Error", description: "Please select a PDF file first", variant: "destructive" });
-      return;
+  const handleConvert = async () => {
+  if (!file) {
+    toast({
+      title: "Error",
+      description: "Please select a PDF file first",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  setIsConverting(true);
+  setDownloadUrl(null);
+
+  // Append file with the correct field name for Multer
+  const formData = new FormData();
+  formData.append("file", file); // <-- 'file' matches upload.single('file') in backend
+
+  toast({
+    title: "Converting to Word",
+    description: "Your PDF is being converted...",
+  });
+
+  try {
+    const response = await Instance.post("/pdf/pdf-to-word", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+      responseType: "blob", // Important to handle binary file
+    });
+
+    // Convert blob to download URL
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    setDownloadUrl(url);
+
+    toast({
+      title: "Conversion Complete!",
+      description: "Your document is ready for download.",
+      variant: "success",
+    });
+  } catch (error) {
+    console.error("Conversion failed:", error);
+    toast({
+      title: "Conversion Failed",
+      description: "There was an error converting your PDF. Ensure it's a valid file.",
+      variant: "destructive",
+    });
+  } finally {
+    setIsConverting(false);
+  }
+};
+
+
+  const renderActionButton = () => {
+    if (downloadUrl) {
+      const wordFileName = file ? file.name.replace(".pdf", ".docx") : "download.docx";
+      return (
+        <a 
+          href={downloadUrl}
+          download={wordFileName}
+          className="w-full bg-green-600 hover:bg-green-700 text-base py-6 rounded-xl font-semibold transition-colors mt-2 text-white flex items-center justify-center"
+        >
+          <Download className="mr-2 h-5 w-5" />
+          Download Word File
+        </a>
+      );
     }
-    toast({ title: "Converting to Word", description: "Your PDF is being converted..." });
+
+    return (
+      <Button 
+        onClick={handleConvert} 
+        disabled={!file || isConverting}
+        className="w-full bg-orange-600 hover:bg-orange-700 text-base py-6 rounded-xl font-semibold transition-colors mt-2"
+      >
+        {isConverting ? (
+          <>
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+            Converting...
+          </>
+        ) : (
+          <>
+            <ArrowRightLeft className="mr-2 h-5 w-5" />
+            Convert to Word
+          </>
+        )}
+      </Button>
+    );
   };
 
   return (
@@ -103,7 +188,7 @@ export default function PDFToWord() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="border-2 border-dashed rounded-xl p-12 text-center border-slate-700 hover:border-orange-500/50 transition-colors bg-slate-900/50">
+                  <div className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors bg-slate-900/50 ${file ? 'border-orange-500/50' : 'border-slate-700 hover:border-orange-500/50'}`}>
                     <Upload className="mx-auto h-12 w-12 text-slate-500 mb-2" />
                     <label htmlFor="file-upload" className="cursor-pointer">
                       <span className="text-orange-400 font-semibold hover:text-orange-300 transition-colors">Choose file</span>
@@ -128,14 +213,8 @@ export default function PDFToWord() {
                     </div>
                   )}
                   
-                  <Button 
-                    onClick={handleConvert} 
-                    disabled={!file}
-                    className="w-full bg-orange-600 hover:bg-orange-700 text-base py-6 rounded-xl font-semibold transition-colors mt-2"
-                  >
-                    <FileText className="mr-2 h-5 w-5" />
-                    Convert to Word
-                  </Button>
+                  {renderActionButton()}
+                  
                 </CardContent>
               </Card>
             </div>

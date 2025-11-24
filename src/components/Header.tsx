@@ -28,7 +28,9 @@ import Kavachlogo from "@/assets/kavach (3).png";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
-import axios from "axios";
+// REMOVED: import axios from "axios";
+// ADDED: Import axiosInstance instead
+import Instance from "@/lib/axiosInstance"; // <--- CHANGE 1: Import axiosInstance
 
 interface HeaderProps {
   isAuthenticated?: boolean;
@@ -57,14 +59,16 @@ export const Header = ({
   // --- LOGOUT HANDLER ---
   const handleLogout = async () => {
     try {
-      await axios.post(
-        "http://localhost:5000/api/auth/logout",
+      // CHANGE 2: Use axiosInstance instead of axios
+      await Instance.post( 
+        "/auth/logout", // Base URL is in axiosInstance, so only use the path
         {},
-        { withCredentials: true }
       );
       navigate("/auth");
     } catch (err) {
       console.error("Logout failed:", err);
+      // The 401 interceptor in axiosInstance should handle redirecting for token expiration,
+      // but keeping the alert for other specific logout failures.
       alert("Logout failed. Please try again.");
     }
   };

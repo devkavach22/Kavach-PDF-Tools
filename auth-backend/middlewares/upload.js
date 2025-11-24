@@ -10,15 +10,7 @@ if (!fs.existsSync(uploadFolder)) {
     console.log("✔ uploads folder created");
 }
 
-// Allowed file types for your PDF Tools platform
-const allowedMimes = [
-    "application/pdf",
-    "image/png",
-    "image/jpeg",
-    "application/msword",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-];
-
+// Storage engine
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         cb(null, uploadFolder);
@@ -30,19 +22,16 @@ const storage = multer.diskStorage({
     }
 });
 
+// Accept ALL file types (zip, rar, csv, pptx, etc.)
 function fileFilter(req, file, cb) {
-    if (allowedMimes.includes(file.mimetype)) {
-        cb(null, true);
-    } else {
-        cb(new Error("❌ Unsupported file format"), false);
-    }
+    cb(null, true); 
 }
 
 const upload = multer({
     storage,
     fileFilter,
     limits: {
-        fileSize: 50 * 1024 * 1024 // 50MB max
+        fileSize: 100 * 1024 * 1024 // 100MB max
     }
 });
 

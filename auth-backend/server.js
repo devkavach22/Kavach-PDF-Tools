@@ -19,8 +19,8 @@ const allowedOrigins = [
 
 app.use(cors({
     // origin: allowedOrigins,
-    origin: "*",
-    credentials: true
+    origin: "https://kavach-pdf-tools.onrender.com",
+    credentials: true   
 }));
 
 // app.options("*")

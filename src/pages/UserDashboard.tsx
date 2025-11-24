@@ -152,11 +152,22 @@ export default function UserDashboard() {
     finally { setIsLoadingFolders(false); }
   };
 
+  // --- UPDATED FETCH FILES FUNCTION ---
   const fetchFolderFiles = async (folderId: string) => {
     if (!folderId) return;
+    
+    // Retrieve token from storage
+    const token = localStorage.getItem("authToken");
+
     setIsLoadingFiles(true);
     try {
-        const response = await Instance.get(`/auth/files/${folderId}`);
+        // Pass the token in the headers explicitly
+        const response = await Instance.get(`/auth/files/${folderId}`, {
+            headers: {
+                'Authorization': token
+            }
+        });
+
         const filesData = response.data.files || response.data;
         if (Array.isArray(filesData)) {
             const mappedFiles: FileType[] = filesData.map((f: any) => ({
@@ -169,7 +180,11 @@ export default function UserDashboard() {
         }));
             setFolderFiles((prev) => ({ ...prev, [folderId]: mappedFiles }));
         }
-    } catch (error) { console.error("Error fetching files:", error); } finally { setIsLoadingFiles(false); }
+    } catch (error) { 
+        console.error("Error fetching files:", error); 
+    } finally { 
+        setIsLoadingFiles(false); 
+    }
   };
 
   useEffect(() => { if (isOverlayOpen) fetchFolders(); }, [isOverlayOpen]);
@@ -190,7 +205,6 @@ export default function UserDashboard() {
   const handleUploadFiles = async (files: FileList) => {
     if (!selectedFolder) return;
     
-    // Retrieve the token from localStorage (assuming it was saved during login)
     const token = localStorage.getItem("authToken");
 
     if (!token) {
@@ -203,7 +217,6 @@ export default function UserDashboard() {
     Array.from(files).forEach((file) => data.append('files', file));
     
     try {
-      // We pass the token explicitly in the header as requested
       await Instance.post(`/auth/upload/${selectedFolder.id}`, data, {
         headers: {
           "Content-Type": "multipart/form-data",
@@ -344,7 +357,7 @@ export default function UserDashboard() {
       </AnimatePresence>
 
       <motion.div animate={{ filter: isOverlayOpen ? "blur(12px) brightness(0.5)" : "blur(0px) brightness(1)", scale: isOverlayOpen ? 0.95 : 1 }} transition={{ duration: 0.5 }} className="flex-1 flex flex-col relative z-10">
-        <Header isAuthenticated={true} onLogout={handleLogout} />
+        <Header isAuthenticated={true} />
         <motion.div initial={{ y: -50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="fixed top-24 right-8 z-50">
            <Button onClick={() => setIsOverlayOpen(true)} className="h-12 px-6 rounded-full bg-orange-500 text-white font-bold hover:bg-orange-400 hover:scale-105 transition-all shadow-[0_0_40px_rgba(249,115,22,0.4)] border border-orange-300/50">
               <LayoutGrid className="h-4 w-4 mr-2" /> OPEN WORKSPACE

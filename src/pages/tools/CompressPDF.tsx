@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import Instance from "@/lib/axiosInstance"; 
 import { Header } from "@/components/Header";
@@ -11,24 +11,42 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { motion } from "framer-motion";
 
-// Interface for the expected backend response
-interface CompressedFileResponse {
-  filename: string;      // The filename returned by backend (e.g., "compressed_123.pdf")
-  originalSize?: string; 
-  compressedSize?: string; 
+// Updated Interface based on the provided JSON response
+interface CompressedFileDetails {
+  originalName: string;
+  outputFile: string; // e.g., "/output/large_test_pdf_compressed_1763978267802.pdf"
+  originalSize: number; // in bytes
+  compressedSize: number; // in bytes
+  reduction: string; // e.g., "42.61%"
+  message: string;
 }
+
+const STORAGE_KEY = "kavach_compressed_file";
 
 export default function CompressPDF() {
   const [file, setFile] = useState<File | null>(null);
   const [compressionLevel, setCompressionLevel] = useState("medium");
   const [isCompressing, setIsCompressing] = useState(false);
-  const [compressedFile, setCompressedFile] = useState<CompressedFileResponse | null>(null);
+  const [compressedFile, setCompressedFile] = useState<CompressedFileDetails | null>(null);
   
   const { toast } = useToast();
 
-  // Auth placeholders
   const isAuthenticated = true;
   const isAdmin = false;
+
+  // 1. Check LocalStorage on mount
+  useEffect(() => {
+    const storedData = localStorage.getItem(STORAGE_KEY);
+    if (storedData) {
+      try {
+        const parsedData: CompressedFileDetails = JSON.parse(storedData);
+        setCompressedFile(parsedData);
+      } catch (error) {
+        console.error("Failed to parse stored compressed file data", error);
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    }
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("user");
@@ -39,12 +57,23 @@ export default function CompressPDF() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
-      setCompressedFile(null); // Reset previous results if new file selected
+      setCompressedFile(null); 
+      localStorage.removeItem(STORAGE_KEY);
+      
       toast({
         title: "File uploaded",
         description: `${e.target.files[0].name} ready to compress`,
       });
     }
+  };
+
+  const formatBytes = (bytes: number, decimals = 2) => {
+    if (!+bytes) return '0 Bytes';
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
   };
 
   const handleCompress = async () => {
@@ -60,13 +89,14 @@ export default function CompressPDF() {
     setIsCompressing(true);
     
     try {
+      // Prepare Form Data
       const formData = new FormData();
-      formData.append('files', file);
+      formData.append('files', file); // Matches backend expectation
       formData.append('level', compressionLevel); 
       
       const token = localStorage.getItem("authToken");
 
-      // 1. Send file to backend for compression
+      // 2. Send file to backend
       const response = await Instance.post('/pdf/compress-pdf', formData, {
         headers: {
             'Content-Type': 'multipart/form-data', 
@@ -76,13 +106,22 @@ export default function CompressPDF() {
 
       console.log("Compression Response:", response.data);
       
-      // 2. Store the response which contains the 'filename' needed for the download step
-      setCompressedFile(response.data); 
-      
-      toast({
-        title: "Success!",
-        description: "PDF compressed successfully.",
-      });
+      // 3. Handle specific JSON structure
+      // The backend returns { message: "...", files: [ { ... } ] }
+      if (response.data.files && response.data.files.length > 0) {
+        const fileData: CompressedFileDetails = response.data.files[0];
+
+        // Store response
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(fileData));
+        setCompressedFile(fileData); 
+        
+        toast({
+          title: "Success!",
+          description: `Reduced by ${fileData.reduction}`,
+        });
+      } else {
+        throw new Error("Invalid response structure from server");
+      }
 
     } catch (error) {
       console.error(error);
@@ -97,14 +136,34 @@ export default function CompressPDF() {
   };
 
   const handleDownload = async () => {
-    // Ensure we have a filename to fetch
-    if (!compressedFile || !compressedFile.filename) {
+    const storedData = localStorage.getItem(STORAGE_KEY);
+    let fileDetails: CompressedFileDetails | null = null;
+
+    if (storedData) {
+        fileDetails = JSON.parse(storedData);
+    } else if (compressedFile) {
+        fileDetails = compressedFile;
+    }
+
+    if (!fileDetails || !fileDetails.outputFile) {
       toast({
         title: "Download Error",
-        description: "No compressed file found for download.",
+        description: "No compressed file record found.",
         variant: "destructive",
       });
       return;
+    }
+
+    // EXTRACT FILENAME from the path provided by backend
+    // Backend returns: "/output/large_test_pdf_compressed_1763978267802.pdf"
+    // We need: "large_test_pdf_compressed_1763978267802.pdf"
+    const rawPath = fileDetails.outputFile;
+    // Split by slash and get the last segment (filename)
+    const filenameToDownload = rawPath.split(/[/\\]/).pop();
+
+    if (!filenameToDownload) {
+        toast({ title: "Error", description: "Could not parse filename", variant: "destructive" });
+        return;
     }
 
     const token = localStorage.getItem("authToken");
@@ -115,53 +174,46 @@ export default function CompressPDF() {
         description: "Fetching your compressed file...",
       });
 
-      // 3. Request the specific file from the backend
-      // We append the filename to the URL: /pdf/download/{compressedFilename}
-      const response = await Instance.get(`/pdf/download/${compressedFile.filename}`, {
+      // 4. Request download using the extracted filename
+      const response = await Instance.get(`/pdf/download/${filenameToDownload}`, {
         headers: {
-          // Pass the Authorization header generated after login
           'Authorization': token ? `${token}` : '',
         },
-        // Important: Tell Axios to treat the response as binary data (Blob)
         responseType: 'blob', 
       });
       
-      // 4. Create a URL for the blob
       const url = window.URL.createObjectURL(new Blob([response.data]));
-      
-      // 5. Create a temporary link to trigger the download in the browser
       const link = document.createElement('a');
       link.href = url;
-      
-      // Set the filename for the user's computer
-      link.setAttribute('download', compressedFile.filename); 
+      // Use the generated filename for the download attribute
+      link.setAttribute('download', filenameToDownload); 
       
       document.body.appendChild(link);
       link.click();
       
-      // Cleanup
       link.parentNode?.removeChild(link);
       window.URL.revokeObjectURL(url);
 
       toast({
         title: "Download Complete",
-        description: `Saved ${compressedFile.filename} to your device.`,
+        description: "File saved to your device.",
       });
 
     } catch (error) {
       console.error("Download Error:", error);
       toast({
         title: "Download Failed",
-        description: "Could not download the file. Check permissions.",
+        description: "Could not download the file.",
         variant: "destructive",
       });
     }
   };
 
-
   const handleReset = () => {
     setFile(null);
     setCompressedFile(null);
+    localStorage.removeItem(STORAGE_KEY);
+    
     const fileInput = document.getElementById('file-upload') as HTMLInputElement;
     if (fileInput) fileInput.value = '';
   };
@@ -251,7 +303,7 @@ export default function CompressPDF() {
                           <div>
                             <p className="font-medium text-white truncate max-w-[200px] sm:max-w-md">{file.name}</p>
                             <p className="text-sm text-slate-400">
-                              Size: {(file.size / (1024 * 1024)).toFixed(2)} MB
+                              Size: {formatBytes(file.size)}
                             </p>
                           </div>
                           <Button variant="ghost" size="sm" onClick={() => setFile(null)} disabled={isCompressing} className="text-slate-400 hover:text-red-400">
@@ -271,30 +323,34 @@ export default function CompressPDF() {
                         <CardTitle className="text-white">Compression Complete!</CardTitle>
                       </div>
                       <CardDescription className="text-slate-400">
-                        Your file has been successfully compressed and is ready for download.
+                        {compressedFile.message}
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
                       <div className="bg-slate-900/60 rounded-xl p-6 border border-white/5 space-y-4">
                         <div className="flex items-center justify-between p-3 bg-black/20 rounded-lg">
                           <span className="text-slate-400 text-sm">File Name</span>
+                          {/* Display the clean filename, not the full path */}
                           <span className="text-slate-200 font-mono text-sm truncate max-w-[200px]">
-                            {compressedFile.filename}
+                            {compressedFile.outputFile.split(/[/\\]/).pop()}
                           </span>
                         </div>
-                        {/* If backend returns size data, display a comparison here */}
-                        {compressedFile.originalSize && compressedFile.compressedSize && (
-                           <div className="grid grid-cols-2 gap-4">
-                              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-center">
-                                <p className="text-xs text-slate-400 uppercase">Original</p>
-                                <p className="text-lg font-bold text-slate-200">{compressedFile.originalSize}</p>
-                              </div>
-                              <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-center">
-                                <p className="text-xs text-slate-400 uppercase">Compressed</p>
-                                <p className="text-lg font-bold text-green-400">{compressedFile.compressedSize}</p>
-                              </div>
-                           </div>
-                        )}
+                        
+                        {/* Comparison Stats */}
+                        <div className="grid grid-cols-3 gap-3">
+                            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-center">
+                              <p className="text-[10px] sm:text-xs text-slate-400 uppercase">Original</p>
+                              <p className="text-sm sm:text-lg font-bold text-slate-200">{formatBytes(compressedFile.originalSize)}</p>
+                            </div>
+                            <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-center">
+                              <p className="text-[10px] sm:text-xs text-slate-400 uppercase">Compressed</p>
+                              <p className="text-sm sm:text-lg font-bold text-green-400">{formatBytes(compressedFile.compressedSize)}</p>
+                            </div>
+                            <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg text-center">
+                              <p className="text-[10px] sm:text-xs text-slate-400 uppercase">Reduction</p>
+                              <p className="text-sm sm:text-lg font-bold text-blue-400">{compressedFile.reduction}</p>
+                            </div>
+                        </div>
                       </div>
 
                       <div className="flex flex-col sm:flex-row gap-4">
@@ -303,7 +359,7 @@ export default function CompressPDF() {
                             className="flex-1 bg-green-600 hover:bg-green-700 text-white py-6 rounded-xl font-semibold shadow-lg shadow-green-900/20 transition-all hover:scale-[1.02]"
                          >
                             <Download className="mr-2 h-5 w-5" />
-                            Download Compressed PDF
+                            Download PDF
                          </Button>
                          <Button 
                             variant="outline" 

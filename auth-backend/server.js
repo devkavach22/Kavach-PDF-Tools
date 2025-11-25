@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import authRoutes from "./routes/authRoutes.js";
 import pdfRoutes from "./routes/pdfRoutes.js";
+import path from "path";
 
 dotenv.config();
 
@@ -14,8 +15,8 @@ const MONGO_URL = process.env.MONGO_URL;
 const FRONTEND_URL = process.env.FRONTEND_URL;
 
 const allowedOrigins = [
-    // "http://localhost:8080",        
-    "https://kavach-pdf-tools.onrender.com",   // Local fronten          // Production frontend (domain)
+    "http://localhost:8080",        
+    // "https://kavach-pdf-tools.onrender.com",   // Local fronten          // Production frontend (domain)
 ];
 
 app.use(cors({
@@ -26,6 +27,8 @@ app.use(cors({
 // app.options("*")
 app.use(express.json());
 app.use(cookieParser());
+
+// app.use("/workspace",express.static(path.join(process.cwd(), "uploads", "workspace")));
 
 app.use("/api/auth",authRoutes);
 app.use("/api/pdf",pdfRoutes);

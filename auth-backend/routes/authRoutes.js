@@ -6,9 +6,14 @@ import User from "../models/Users.js";
 import Folder from "../models/Folder.js";
 import File from "../models/File.js";
 import upload from "../middlewares/upload.js";
+import fs from "fs";
+import path from "path";
+import { extractTextUsingOCR } from "../utils/ocrExtraction.js";
 
 
 const router = express.Router();
+const LOCAL_STORAGE_PATH = process.env.LOCAL_STORAGE_PATH || "./uploads";
+console.log("LOCAL_STORAGE_PATH:", LOCAL_STORAGE_PATH);
 
 router.post("/register", register);
 router.post("/login", login);
@@ -86,35 +91,88 @@ router.post("/upload/:folderId", auth, upload.array("files"), async (req, res) =
             return res.status(400).json({ error: "No files uploaded" });
         }
 
-        const filesInfo = req.files.map((file) => ({
-            folderId,
-            userId: req.user.id,
+        const userFolderPath = path.join(LOCAL_STORAGE_PATH, req.user.id.toString(), folderId.toString());
+        console.log("User folder path:", userFolderPath);
 
-            originalName: file.originalName,     // FIXED
-            storedName: file.filename,
-            size: file.size,
-            extension: file.originalname.split(".").pop(),
-            mimeType: file.mimetype,
-            uploadDate: new Date(),
+        if (!fs.existsSync(userFolderPath)) {
+            fs.mkdirSync(userFolderPath, { recursive: true });
+            console.log("Created directory:", userFolderPath);
+        }
 
-            //   extension: String(
-            //     file?.originalName ??
-            //     file?.name ??
-            //     ""
-            // )
-            // .split(".")
-            // .pop() || "", // FIXED
-            //   mimeType: file.mimetype,
-            //   uploadDate: new Date(),              // FIXED (matches schema)
-        }));
 
-        console.log("Mapped file info:", filesInfo);
+        const uploadedFiles = [];
+        const ocrRecords = [];
 
-        const savedFiles = await File.insertMany(filesInfo);
+        for (const file of req.files) {
+            const filePath = path.join(userFolderPath, file.filename);
+            fs.renameSync(file.path, filePath); // Move file to user-folder
+
+            const extractedText = await extractTextUsingOCR(filePath);
+
+            uploadedFiles.push({
+                folderId,
+                userId: req.user.id,
+                originalName: file.originalname,
+                storedName: file.filename,
+                size: file.size,
+                extension: file.originalname.split(".").pop(),
+                mimeType: file.mimetype,
+                localPath: filePath,
+                publicPath: `/workspace/${req.user.id}/${folderId}/${file.filename}`,
+                // extractTextUsingOCR: await extractTextUsingOCR(filePath),
+                uploadDate: new Date(),
+            });
+
+            ocrRecords.push({
+                fileName: file.originalname,   
+                fileId: null, // To be updated after saving File record
+                userId: req.user.id,
+                folderId,
+                extractedText,   
+                createdAt: new Date(),       
+            });
+        }
+
+        console.log("Uploaded files info:", uploadedFiles);
+        // const filesInfo = req.files.map((file) => ({
+
+        //     folderId,
+        //     userId: req.user.id,
+
+        //     originalName: file.originalName,     // FIXED
+        //     storedName: file.filename,
+        //     size: file.size,
+        //     extension: file.originalname.split(".").pop(),
+        //     mimeType: file.mimetype,
+        //     localPath: path.join(userFolderPath, file.filename),
+        //     publicPath: `/workspace/${req.user.id}/${folderId}/${file.filename}`,
+        //     uploadDate: new Date(),
+
+        //     //   extension: String(
+        //     //     file?.originalName ??
+        //     //     file?.name ??
+        //     //     ""
+        //     // )
+        //     // .split(".")
+        //     // .pop() || "", // FIXED
+        //     //   mimeType: file.mimetype,
+        //     //   uploadDate: new Date(),              // FIXED (matches schema)
+        // }));
+
+        // console.log("Mapped file info:", filesInfo);
+
+        const savedFiles = await File.insertMany(uploadedFiles);
+
+        for (let i=0; i<ocrRecords.length; i++) {
+            ocrRecords[i].fileId = savedFiles[i]._id;
+        }
+
+        const savedOcrTexts = await ocrTexts.insertMany(ocrRecords);
 
         res.status(200).json({
             message: "Files uploaded successfully",
             files: savedFiles,
+            ocrTexts: savedOcrTexts
         });
 
     } catch (error) {

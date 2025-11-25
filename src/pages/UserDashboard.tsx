@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
-import Instance from "@/lib/axiosInstance"; // Imported the custom instance
+import Instance from "@/lib/axiosInstance";
 import { Header } from "@/components/Header"; 
 import { Footer } from "@/components/Footer"; 
 import {
-  FileText, Clock, Download, Star, Share2, Trash2, FileDown, Rows, Lock,
-  FileImage, ScissorsIcon, FolderPlus, Folder, UploadCloud, X, ArrowLeft,
-  CheckCircle2, Plus, LayoutGrid, ChevronRight, HardDrive, Search, MoreVertical,
-  Activity, Zap, PieChart as PieIcon, BarChart3, Sparkles, File as FileIcon,
-  Loader2, Eye
+  FileText, Clock, Download, Share2, Trash2, FileDown, Rows, Lock,
+  FileImage, ScissorsIcon, Folder, UploadCloud, X, ArrowLeft,
+  Plus, LayoutGrid, HardDrive, Search, MoreVertical,
+  Activity, Zap, PieChart as PieIcon, Sparkles, File as FileIcon,
+  Loader2, Eye, Brain, CheckCircle2
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -96,11 +96,20 @@ const toolUsageData = [
 const PIE_COLORS = ["#f97316", "#ef4444", "#f59e0b", "#64748b"];
 
 type FolderType = { id: string; name: string; desc?: string; fileCount: number; createdAt: string; theme: string };
-type FileType = { id: string; name: string; extension: string; size: number; pageCount: string | number; path?: string; }; // path is important for viewing/downloading
+type FileType = { 
+  id: string; 
+  name: string; 
+  extension: string; 
+  size: number; 
+  pageCount: string | number; 
+  publicPath?: string;
+  extractedText?: string; // Added for OCR content
+}; 
 
 // --- COMPONENT: FILE VIEWER OVERLAY ---
 const FileViewerOverlay = ({ file, onClose }: { file: FileType; onClose: () => void }) => {
-  // Determine an icon based on extension for the viewer placeholder
+  const [activeTab, setActiveTab] = useState<"preview" | "ocr">("preview");
+
   const getFileIcon = (ext: string) => {
     switch (ext.toLowerCase()) {
       case 'pdf': return <FileText className="h-12 w-12 text-red-500" />;
@@ -119,41 +128,87 @@ const FileViewerOverlay = ({ file, onClose }: { file: FileType; onClose: () => v
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm"
-      onClick={onClose} // Close when clicking the backdrop
+      onClick={onClose}
     >
       <motion.div
         initial={{ scale: 0.8, y: -20 }}
         animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.8, y: -20 }}
-        className="w-full max-w-4xl h-[80vh] mx-4 flex flex-col rounded-xl overflow-hidden bg-[#0a0a0a] border border-white/10 shadow-2xl"
-        onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside the viewer
+        className="w-full max-w-4xl h-[85vh] mx-4 flex flex-col rounded-xl overflow-hidden bg-[#0a0a0a] border border-white/10 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-4 border-b border-white/10 bg-white/5">
-          <h3 className="text-xl font-bold text-white truncate max-w-[70%]">{file.name}</h3>
+          <div className="flex items-center gap-4">
+             <div className="p-2 bg-white/10 rounded-lg">{getFileIcon(file.extension)}</div>
+             <div>
+                <h3 className="text-xl font-bold text-white truncate max-w-[300px]">{file.name}</h3>
+                <p className="text-xs text-slate-400 font-mono">{formatBytes(file.size)} • {file.pageCount} Pages</p>
+             </div>
+          </div>
           <Button onClick={onClose} variant="ghost" className="h-10 w-10 rounded-full p-0 hover:bg-white/10 text-slate-400 hover:text-white">
             <X className="h-5 w-5" />
           </Button>
         </div>
-        
-        {/* --- Viewer Placeholder --- */}
-        <div className="flex-1 p-8 overflow-y-auto flex flex-col items-center justify-center text-center bg-grid-white/[0.03]">
-          <div className="p-8 border-2 border-dashed border-white/10 rounded-2xl bg-white/5 space-y-4">
-            {getFileIcon(file.extension)}
-            <p className="text-xl font-semibold text-white">Document Viewer Placeholder</p>
-            <p className="text-sm text-slate-400">In a real application, a library (like `react-pdf`) or an embedded iframe would render the content here.</p>
-            <div className="text-left mt-6 space-y-1 text-slate-300">
-               <p className="font-mono text-sm">Size: <span className="text-orange-400">{formatBytes(file.size)}</span></p>
-               <p className="font-mono text-sm">Pages: <span className="text-orange-400">{file.pageCount}</span></p>
-               <p className="font-mono text-sm">Path: <span className="text-orange-400 truncate max-w-xs block">{file.path || "N/A"}</span></p>
-            </div>
-          </div>
-        </div>
 
+        {/* TABS */}
+        <div className="flex border-b border-white/10 bg-black/40">
+           <button 
+             onClick={() => setActiveTab("preview")}
+             className={cn("flex-1 py-3 text-sm font-medium transition-colors relative", activeTab === "preview" ? "text-orange-400 bg-white/5" : "text-slate-400 hover:text-white hover:bg-white/5")}
+           >
+             <span className="flex items-center justify-center gap-2"><Eye className="h-4 w-4" /> Preview</span>
+             {activeTab === "preview" && <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />}
+           </button>
+           <button 
+             onClick={() => setActiveTab("ocr")}
+             className={cn("flex-1 py-3 text-sm font-medium transition-colors relative", activeTab === "ocr" ? "text-orange-400 bg-white/5" : "text-slate-400 hover:text-white hover:bg-white/5")}
+           >
+             <span className="flex items-center justify-center gap-2"><Brain className="h-4 w-4" /> Extracted Text (OCR)</span>
+             {activeTab === "ocr" && <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500" />}
+           </button>
+        </div>
+        
+        <div className="flex-1 p-0 overflow-hidden bg-grid-white/[0.03] relative">
+          {activeTab === "preview" ? (
+             <div className="h-full w-full p-8 overflow-y-auto flex flex-col items-center justify-center text-center">
+                <div className="p-12 border-2 border-dashed border-white/10 rounded-2xl bg-white/5 space-y-6 max-w-lg w-full">
+                   <div className="mx-auto w-fit">{getFileIcon(file.extension)}</div>
+                   <div>
+                       <p className="text-xl font-semibold text-white mb-2">File Preview</p>
+                       <p className="text-sm text-slate-400">Preview is not available for this file type in the dashboard.</p>
+                   </div>
+                   
+                   {file.publicPath && (
+                       <div className="pt-4 border-t border-white/10 w-full">
+                           <a href={`http://localhost:8080${file.publicPath}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 w-full py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg transition-colors font-medium text-sm">
+                              <Download className="h-4 w-4" /> Open / Download File
+                           </a>
+                       </div>
+                   )}
+                </div>
+             </div>
+          ) : (
+             <div className="h-full w-full p-6 overflow-y-auto">
+                <div className="bg-black/50 border border-white/10 rounded-lg p-6 min-h-full">
+                   {file.extractedText ? (
+                      <pre className="font-mono text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">
+                         {file.extractedText}
+                      </pre>
+                   ) : (
+                      <div className="flex flex-col items-center justify-center h-64 text-slate-500">
+                         <Brain className="h-12 w-12 mb-4 opacity-20" />
+                         <p>No text extracted or OCR processing pending.</p>
+                         <p className="text-xs mt-2 opacity-50">Upload the file again to trigger OCR extraction.</p>
+                      </div>
+                   )}
+                </div>
+             </div>
+          )}
+        </div>
       </motion.div>
     </motion.div>
   );
 };
-// --- END FILE VIEWER OVERLAY ---
 
 
 export default function UserDashboard() {
@@ -168,9 +223,13 @@ export default function UserDashboard() {
   const [selectedFolder, setSelectedFolder] = useState<FolderType | null>(null);
   const [folderFiles, setFolderFiles] = useState<Record<string, FileType[]>>({});
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
+  
+  // Upload State
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState("Uploading..."); // New state for OCR feedback
   const [isDragging, setIsDragging] = useState(false);
-  const [viewingFile, setViewingFile] = useState<FileType | null>(null); // NEW STATE FOR VIEWER
+  
+  const [viewingFile, setViewingFile] = useState<FileType | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleLogout = () => {
@@ -213,13 +272,12 @@ export default function UserDashboard() {
     finally { setIsLoadingFolders(false); }
   };
 
-  // --- UPDATED FETCH FILES FUNCTION (Corrected Mapping) ---
   const fetchFolderFiles = async (folderId: string) => {
     if (!folderId) return;
     
     const token = localStorage.getItem("authToken");
-
     setIsLoadingFiles(true);
+    
     try {
         const response = await Instance.get(`/auth/files/${folderId}`, {
             headers: { 'Authorization': token }
@@ -228,26 +286,16 @@ export default function UserDashboard() {
         const filesData = response.data.files || response.data;
         if (Array.isArray(filesData)) {
             const mappedFiles: FileType[] = filesData.map((f: any) => {
-                // Logic to clean storedName (remove timestamp prefix if present)
-                let cleanName = f.originalName || f.name;
-                if (!cleanName && f.storedName) {
-                    // Try to strip timestamp (e.g., "1763966783318-filename.png" -> "filename.png")
-                    const parts = f.storedName.split('-');
-                    if (parts.length > 1 && /^\d+$/.test(parts[0])) {
-                        cleanName = parts.slice(1).join('-');
-                    } else {
-                        cleanName = f.storedName;
-                    }
-                }
-                
+                const displayName = f.originalName || f.name || f.storedName || "Unknown File";
+
                 return {
                     id: f._id || f.id, 
-                    name: cleanName || "Unknown File",
-                    // Use API provided extension, or fallback to parsing name
-                    extension: f.extension || (cleanName || "").split('.').pop() || "",
+                    name: displayName,
+                    extension: f.extension || displayName.split('.').pop() || "file",
                     size: f.size || 0, 
                     pageCount: f.pageCount || 'N/A', 
-                    path: f.path
+                    publicPath: f.publicPath || "",
+                    extractedText: f.extractedText || undefined // Handle if backend returns it in future GET
                 };
             });
             setFolderFiles((prev) => ({ ...prev, [folderId]: mappedFiles }));
@@ -273,41 +321,64 @@ export default function UserDashboard() {
 
   const handleOpenFolder = (folder: FolderType) => { setSelectedFolder(folder); setCurrentView("files"); fetchFolderFiles(folder.id); };
   const handleBackToFolders = () => { setCurrentView("folders"); setSelectedFolder(null); fetchFolders(); };
-
-  // NEW FUNCTION: Open the file viewer
-  const handleViewFile = (file: FileType) => {
-    setViewingFile(file);
-  };
-  // NEW FUNCTION: Close the file viewer
-  const handleCloseViewer = () => {
-    setViewingFile(null);
-  };
+  const handleViewFile = (file: FileType) => { setViewingFile(file); };
+  const handleCloseViewer = () => { setViewingFile(null); };
 
   const handleUploadFiles = async (files: FileList) => {
     if (!selectedFolder) return;
-    
     const token = localStorage.getItem("authToken");
-    if (!token) {
-      console.error("No authentication token found");
-      return; 
-    }
+    if (!token) return;
 
     setIsUploading(true);
+    setUploadStatus("Uploading & Initializing OCR...");
+
     const data = new FormData();
     Array.from(files).forEach((file) => data.append('files', file));
     
     try {
-      await Instance.post(`/auth/upload/${selectedFolder.id}`, data, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-          "Authorization": token 
-        },
+      // 1. Send Upload Request
+      // Note: This request will now take longer as OCR is happening in the backend
+      setUploadStatus("Extracting Text via OCR...");
+      const response = await Instance.post(`/auth/upload/${selectedFolder.id}`, data, {
+        headers: { "Content-Type": "multipart/form-data", "Authorization": token },
       });
-      await fetchFolderFiles(selectedFolder.id);
+
+      // 2. Handle Response with Extracted Data
+      const { files: uploadedFiles, ocrTexts } = response.data;
+      
+      // 3. Manually map the returned OCR text to the file objects for immediate display
+      // This avoids a re-fetch and lets the user see the text immediately.
+      const mappedNewFiles: FileType[] = uploadedFiles.map((f: any, index: number) => {
+         const displayName = f.originalName || f.name || "Unknown File";
+         
+         // Find matching OCR text (assuming same order or name, using index as fallback safely since processed in loop)
+         const relevantOcr = ocrTexts && ocrTexts[index] ? ocrTexts[index].extractedText : "";
+
+         return {
+            id: f._id || f.id,
+            name: displayName,
+            extension: f.extension || displayName.split('.').pop() || "file",
+            size: f.size || 0,
+            pageCount: f.pageCount || 'N/A',
+            publicPath: f.publicPath || "",
+            extractedText: relevantOcr // Store extracted text locally
+         };
+      });
+
+      // 4. Update State
+      setFolderFiles(prev => ({
+        ...prev,
+        [selectedFolder.id]: [...(prev[selectedFolder.id] || []), ...mappedNewFiles]
+      }));
+
+      // Optional: Refresh count in background
+      fetchFolders(); 
+
     } catch (error) { 
         console.error("Error uploading files:", error); 
     } finally { 
-        setIsUploading(false); 
+        setIsUploading(false);
+        setUploadStatus("Uploading...");
     }
   };
 
@@ -320,7 +391,7 @@ export default function UserDashboard() {
   return (
     <div className="relative flex flex-col min-h-screen bg-[#0f172a] font-sans text-slate-50 selection:bg-orange-500/30 selection:text-orange-100 overflow-x-hidden perspective-1000">
       
-      {/* --- AMBIENT BACKGROUND --- */}
+      {/* BACKGROUND */}
       <div className="fixed inset-0 z-0 pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-[#0f172a] to-black" />
         <motion.div animate={{ opacity: [0.4, 0.6, 0.4], scale: [1, 1.1, 1], rotate: [0, 5, 0] }} transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }} className="absolute -top-[20%] left-[10%] w-[60vw] h-[60vw] bg-orange-600/10 rounded-full blur-[120px]" />
@@ -328,7 +399,7 @@ export default function UserDashboard() {
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay" />
       </div>
       
-      {/* --- Document Viewer Overlay (NEW) --- */}
+      {/* VIEWER OVERLAY */}
       <AnimatePresence>{viewingFile && <FileViewerOverlay file={viewingFile} onClose={handleCloseViewer} />}</AnimatePresence>
 
       <AnimatePresence>
@@ -402,20 +473,38 @@ export default function UserDashboard() {
                  ) : (
                     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
                        <input type="file" ref={fileInputRef} onChange={handleFileSelect} multiple className="hidden" />
-                       <div onDragEnter={handleDragEnter} onDragLeave={handleDragLeave} onDragOver={handleDragOver} onDrop={handleDrop} onClick={() => fileInputRef.current?.click()}
-                         className={cn("border-2 border-dashed border-white/10 rounded-3xl p-12 flex flex-col items-center justify-center text-center cursor-pointer hover:border-orange-500/40 hover:bg-orange-500/5 transition-all group", (isDragging || isUploading) && "border-orange-500/40 bg-orange-500/5")}
+                       
+                       {/* UPLOAD AREA */}
+                       <div onDragEnter={handleDragEnter} onDragLeave={handleDragLeave} onDragOver={handleDragOver} onDrop={handleDrop} onClick={() => !isUploading && fileInputRef.current?.click()}
+                         className={cn(
+                            "border-2 border-dashed border-white/10 rounded-3xl p-12 flex flex-col items-center justify-center text-center transition-all group relative overflow-hidden", 
+                            (isDragging || isUploading) ? "border-orange-500/40 bg-orange-500/5 cursor-wait" : "cursor-pointer hover:border-orange-500/40 hover:bg-orange-500/5"
+                         )}
                        >
-                          <div className="h-16 w-16 rounded-full bg-gradient-to-br from-slate-800 to-black border border-white/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-lg shadow-orange-900/20">
-                             {isUploading ? <Loader2 className="h-8 w-8 text-orange-400 animate-spin" /> : <UploadCloud className={cn("h-8 w-8 text-slate-400 group-hover:text-orange-400", isDragging && "text-orange-400")} />}
+                          {isUploading && <motion.div className="absolute inset-0 bg-black/20 backdrop-blur-[1px] z-10" />}
+                          
+                          <div className="h-16 w-16 rounded-full bg-gradient-to-br from-slate-800 to-black border border-white/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-lg shadow-orange-900/20 relative z-20">
+                             {isUploading ? (
+                                <Brain className="h-8 w-8 text-orange-400 animate-pulse" />
+                             ) : (
+                                <UploadCloud className={cn("h-8 w-8 text-slate-400 group-hover:text-orange-400", isDragging && "text-orange-400")} />
+                             )}
                           </div>
-                          <p className="text-lg font-medium text-white">{isUploading ? "Uploading files..." : isDragging ? "Drop files to upload" : "Drag & drop files or click to select"}</p>
-                          <p className="text-sm text-slate-500 font-mono mt-2">SUPPORTED: PDF, DOCX, JPG</p>
+                          
+                          <div className="relative z-20">
+                              <p className="text-lg font-medium text-white">
+                                {isUploading ? uploadStatus : isDragging ? "Drop files to upload" : "Drag & drop files or click to select"}
+                              </p>
+                              {isUploading && <p className="text-xs text-orange-400 mt-2 font-mono animate-pulse">AI OCR is analyzing your document...</p>}
+                              {!isUploading && <p className="text-sm text-slate-500 font-mono mt-2">SUPPORTED: PDF, DOCX, JPG</p>}
+                          </div>
                        </div>
+
                        <div className="mt-8 overflow-hidden rounded-lg border border-white/10 bg-black/20 backdrop-blur-sm">
                          <table className="w-full divide-y divide-white/10">
                            <thead className="bg-white/5">
                              <tr>
-                               {["Name", "Extension", "Size", "Page Count", ""].map((h, i) => <th key={i} className="px-6 py-4 text-left text-xs font-mono font-medium text-slate-400 uppercase tracking-widest">{h}</th>)}
+                               {["Name", "Extension", "Size", "OCR Status", ""].map((h, i) => <th key={i} className="px-6 py-4 text-left text-xs font-mono font-medium text-slate-400 uppercase tracking-widest">{h}</th>)}
                              </tr>
                            </thead>
                            <tbody className="divide-y divide-white/5">
@@ -424,9 +513,14 @@ export default function UserDashboard() {
                                  <td className="px-6 py-4 whitespace-nowrap"><div className="flex items-center gap-3"><FileIcon className="h-4 w-4 text-orange-400" /><span className="text-sm font-medium text-white">{file.name}</span></div></td>
                                  <td className="px-4 py-4 whitespace-nowrap"><Badge variant="outline" className="font-mono text-xs border-slate-700 text-slate-400">{file.extension}</Badge></td>
                                  <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-400 font-mono">{formatBytes(file.size)}</td>
-                                 <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-400 font-mono">{file.pageCount}</td>
+                                 <td className="px-4 py-4 whitespace-nowrap">
+                                    {file.extractedText ? (
+                                        <Badge className="bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border-0 text-[10px]"><CheckCircle2 className="h-3 w-3 mr-1" /> Text Ready</Badge>
+                                    ) : (
+                                        <span className="text-slate-600 text-xs">-</span>
+                                    )}
+                                 </td>
                                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    {/* NEW: View Button */}
                                     <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-500 hover:text-blue-400" onClick={() => handleViewFile(file)}><Eye className="h-4 w-4" /></Button>
                                     <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-500 hover:text-orange-400"><Download className="h-4 w-4" /></Button>
                                     <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-500 hover:text-red-400"><Trash2 className="h-4 w-4" /></Button>
@@ -445,7 +539,7 @@ export default function UserDashboard() {
       </AnimatePresence>
 
       <motion.div animate={{ filter: isOverlayOpen ? "blur(12px) brightness(0.5)" : "blur(0px) brightness(1)", scale: isOverlayOpen ? 0.95 : 1 }} transition={{ duration: 0.5 }} className="flex-1 flex flex-col relative z-10">
-        <Header isAuthenticated={true} onLogout={handleLogout} />
+        <Header isAuthenticated={true} />
         <motion.div initial={{ y: -50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="fixed top-24 right-8 z-50">
            <Button onClick={() => setIsOverlayOpen(true)} className="h-12 px-6 rounded-full bg-orange-500 text-white font-bold hover:bg-orange-400 hover:scale-105 transition-all shadow-[0_0_40px_rgba(249,115,22,0.4)] border border-orange-300/50">
               <LayoutGrid className="h-4 w-4 mr-2" /> OPEN WORKSPACE

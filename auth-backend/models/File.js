@@ -9,6 +9,10 @@ const fileSchema = new mongoose.Schema({
   size: Number,
   extension: String,
   mimeType: String,
+  localPath: String,
+  publicPath: String,
+  extractedText: { type: String, default: "" },   // 👈 NEW FIELD
+  // uploadDate: Date
 
   uploadDate: { type: Date, default: Date.now }
 });

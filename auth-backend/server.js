@@ -15,8 +15,8 @@ const MONGO_URL = process.env.MONGO_URL;
 const FRONTEND_URL = process.env.FRONTEND_URL;
 
 const allowedOrigins = [
-    "http://localhost:8080",        
-    // "https://kavach-pdf-tools.onrender.com",   // Local fronten          // Production frontend (domain)
+    // "http://localhost:8080",        
+    "https://kavach-pdf-tools.onrender.com",   // Local fronten          // Production frontend (domain)
 ];
 
 app.use(cors({

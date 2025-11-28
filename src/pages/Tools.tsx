@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 
 function cn(...inputs: ClassValue[]) { return twMerge(clsx(inputs)); }
 
-const SpotlightCard = ({ children, className = "", spotlightColor = "rgba(249, 115, 22, 0.15)", onClick }: any) => {
+const SpotlightCard = ({ children, className = "", spotlightColor = "rgba(249, 115, 22, 0.1)", onClick }: any) => {
   const divRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [opacity, setOpacity] = useState(0);
@@ -27,7 +27,8 @@ const SpotlightCard = ({ children, className = "", spotlightColor = "rgba(249, 1
     <div
       ref={divRef} onClick={onClick} onMouseMove={handleMouseMove} onMouseEnter={() => setOpacity(1)} onMouseLeave={() => setOpacity(0)}
       className={cn(
-        "relative overflow-hidden rounded-2xl border border-white/10 bg-slate-900/40 backdrop-blur-md shadow-xl transition-all duration-300 group hover:shadow-orange-500/10 hover:border-orange-500/30",
+        // Updated for Light Theme: White bg, slate border, light shadow
+        "relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 group hover:shadow-orange-500/10 hover:border-orange-500/30",
         className
       )}
     >
@@ -70,33 +71,35 @@ export default function Tools() {
   
   const getCategoryColor = (category: string) => {
     switch(category) {
-      case "Organize": return "text-orange-400";
-      case "Optimize": return "text-amber-400";
-      case "Convert": return "text-red-400";
-      case "Security": return "text-slate-200";
-      default: return "text-orange-300";
+      case "Organize": return "text-orange-600"; // Darker for light mode
+      case "Optimize": return "text-amber-600";
+      case "Convert": return "text-red-600";
+      case "Security": return "text-slate-600";
+      default: return "text-orange-500";
     }
   };
 
   const getCategoryBg = (category: string) => {
     switch(category) {
-      case "Organize": return "bg-orange-500/10 border-orange-500/20";
-      case "Optimize": return "bg-amber-500/10 border-amber-500/20";
-      case "Convert": return "bg-red-500/10 border-red-500/20";
-      case "Security": return "bg-slate-500/10 border-slate-500/20";
-      default: return "bg-orange-500/10 border-orange-500/20";
+      // Adjusted opacities for light mode visibility
+      case "Organize": return "bg-orange-100 border-orange-200";
+      case "Optimize": return "bg-amber-100 border-amber-200";
+      case "Convert": return "bg-red-100 border-red-200";
+      case "Security": return "bg-slate-100 border-slate-200";
+      default: return "bg-orange-100 border-orange-200";
     }
   };
 
   return (
-    <div className="relative flex flex-col min-h-screen bg-[#0f172a] font-sans text-slate-50 selection:bg-orange-500/30 selection:text-orange-200 overflow-x-hidden">
+    // Bg-white, text-slate-900, changed selection color
+    <div className="relative flex flex-col min-h-screen bg-white font-sans text-slate-900 selection:bg-orange-200 selection:text-orange-900 overflow-x-hidden">
       
        {/* --- AMBIENT BACKGROUND --- */}
        <div className="fixed inset-0 z-0 pointer-events-none">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-[#0f172a] to-black" />
-        <motion.div animate={{ opacity: [0.4, 0.6, 0.4], scale: [1, 1.1, 1], rotate: [0, 5, 0] }} transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }} className="absolute -top-[20%] left-[10%] w-[60vw] h-[60vw] bg-orange-600/10 rounded-full blur-[120px]" />
-        <motion.div animate={{ opacity: [0.3, 0.5, 0.3], scale: [1, 1.2, 1], rotate: [0, -5, 0] }} transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }} className="absolute -bottom-[10%] right-[0%] w-[50vw] h-[50vw] bg-red-600/10 rounded-full blur-[100px]" />
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay" />
+        <div className="absolute inset-0 bg-white" /> {/* Removed dark radial gradient */}
+        <motion.div animate={{ opacity: [0.4, 0.6, 0.4], scale: [1, 1.1, 1], rotate: [0, 5, 0] }} transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }} className="absolute -top-[20%] left-[10%] w-[60vw] h-[60vw] bg-orange-200/40 rounded-full blur-[120px]" />
+        <motion.div animate={{ opacity: [0.3, 0.5, 0.3], scale: [1, 1.2, 1], rotate: [0, -5, 0] }} transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }} className="absolute -bottom-[10%] right-[0%] w-[50vw] h-[50vw] bg-red-200/40 rounded-full blur-[100px]" />
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-multiply" />
       </div>
 
       <div className="relative z-10 flex flex-col min-h-screen">
@@ -105,12 +108,12 @@ export default function Tools() {
         <main className="flex-1 container mx-auto py-24 px-4 sm:px-8">
           <div className="text-center space-y-6 mb-20">
             <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex justify-center">
-               <Badge variant="outline" className="bg-orange-950/30 text-orange-400 border-orange-500/30 px-4 py-1 text-xs uppercase tracking-widest">Suite v2.0</Badge>
+               <Badge variant="outline" className="bg-orange-50 text-orange-600 border-orange-200 px-4 py-1 text-xs uppercase tracking-widest">Suite v2.0</Badge>
             </motion.div>
-            <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-4xl md:text-6xl font-bold tracking-tight">
-              Powerful <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-red-500 to-amber-500 animate-gradient-x">PDF Tools</span>
+            <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-4xl md:text-6xl font-bold tracking-tight text-slate-900">
+              Powerful <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 via-red-500 to-amber-500 animate-gradient-x">PDF Tools</span>
             </motion.h1>
-            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto">
+            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="text-lg md:text-xl text-slate-500 max-w-2xl mx-auto">
               Choose from our comprehensive suite of advanced utilities to process, convert, and secure your documents.
             </motion.p>
           </div>
@@ -126,14 +129,14 @@ export default function Tools() {
                         </div>
                     </div>
                     <div className="space-y-2">
-                        <h3 className="text-xl font-bold text-white group-hover:text-orange-400 transition-colors">{tool.title}</h3>
-                        <p className="text-sm text-slate-400 leading-relaxed">{tool.description}</p>
+                        <h3 className="text-xl font-bold text-slate-900 group-hover:text-orange-600 transition-colors">{tool.title}</h3>
+                        <p className="text-sm text-slate-500 leading-relaxed">{tool.description}</p>
                     </div>
                   </div>
-                  <div className="mt-6 pt-6 border-t border-white/5 flex items-center justify-between">
-                     <span className="text-xs font-mono text-slate-500 uppercase tracking-wider group-hover:text-slate-300 transition-colors">{tool.category || "Utility"}</span>
-                     <div className="h-8 w-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-orange-500/20 transition-colors">
-                        <ArrowRight className="h-4 w-4 text-slate-400 group-hover:text-orange-400 -rotate-45 group-hover:rotate-0 transition-transform duration-300" />
+                  <div className="mt-6 pt-6 border-t border-slate-100 flex items-center justify-between">
+                     <span className="text-xs font-mono text-slate-400 uppercase tracking-wider group-hover:text-slate-600 transition-colors">{tool.category || "Utility"}</span>
+                     <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center group-hover:bg-orange-100 transition-colors">
+                        <ArrowRight className="h-4 w-4 text-slate-400 group-hover:text-orange-500 -rotate-45 group-hover:rotate-0 transition-transform duration-300" />
                      </div>
                   </div>
                 </SpotlightCard>

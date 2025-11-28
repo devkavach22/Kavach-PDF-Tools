@@ -1,29 +1,55 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Upload, ArrowRightLeft, ArrowLeft, Download, Loader2 } from "lucide-react";
+// ✅ Imports verified
+import { Upload, ArrowRightLeft, ArrowLeft, Download, Loader2, CheckCircle, RefreshCw, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import Instance from "@/lib/axiosInstance"; // Import axiosInstance
+import Instance from "@/lib/axiosInstance";
+
+interface ConvertedFileDetails {
+  originalName: string;
+  outputFileName: string;
+  message: string;
+}
+
+const STORAGE_KEY = "kavach_pdf_to_word_data";
 
 export default function PDFToWord() {
   const [file, setFile] = useState<File | null>(null);
   const [isConverting, setIsConverting] = useState(false);
-  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [convertedFile, setConvertedFile] = useState<ConvertedFileDetails | null>(null);
+  
   const { toast } = useToast();
 
-  // Auth placeholders
-  const isAuthenticated = true;
+  const isAuthenticated = !!localStorage.getItem("authToken");
   const isAdmin = false;
+
+  useEffect(() => {
+    const storedData = localStorage.getItem(STORAGE_KEY);
+    if (storedData) {
+      try {
+        const parsedData = JSON.parse(storedData);
+        if (parsedData && parsedData.outputFileName) {
+          setConvertedFile(parsedData);
+        }
+      } catch (error) {
+        console.error("Failed to parse stored data", error);
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    }
+  }, []);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
       setFile(selectedFile);
-      setDownloadUrl(null); // Reset download link on new file selection
+      setConvertedFile(null);
+      localStorage.removeItem(STORAGE_KEY);
+      
       toast({
         title: "File uploaded",
         description: `${selectedFile.name} ready to convert`,
@@ -32,193 +58,249 @@ export default function PDFToWord() {
   };
 
   const handleConvert = async () => {
-  if (!file) {
-    toast({
-      title: "Error",
-      description: "Please select a PDF file first",
-      variant: "destructive",
-    });
-    return;
-  }
-
-  setIsConverting(true);
-  setDownloadUrl(null);
-
-  // Append file with the correct field name for Multer
-  const formData = new FormData();
-  formData.append("file", file); // <-- 'file' matches upload.single('file') in backend
-
-  toast({
-    title: "Converting to Word",
-    description: "Your PDF is being converted...",
-  });
-
-  try {
-    const response = await Instance.post("/pdf/pdf-to-word", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-      responseType: "blob", // Important to handle binary file
-    });
-
-    // Convert blob to download URL
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    setDownloadUrl(url);
-
-    toast({
-      title: "Conversion Complete!",
-      description: "Your document is ready for download.",
-      variant: "success",
-    });
-  } catch (error) {
-    console.error("Conversion failed:", error);
-    toast({
-      title: "Conversion Failed",
-      description: "There was an error converting your PDF. Ensure it's a valid file.",
-      variant: "destructive",
-    });
-  } finally {
-    setIsConverting(false);
-  }
-};
-
-
-  const renderActionButton = () => {
-    if (downloadUrl) {
-      const wordFileName = file ? file.name.replace(".pdf", ".docx") : "download.docx";
-      return (
-        <a 
-          href={downloadUrl}
-          download={wordFileName}
-          className="w-full bg-green-600 hover:bg-green-700 text-base py-6 rounded-xl font-semibold transition-colors mt-2 text-white flex items-center justify-center"
-        >
-          <Download className="mr-2 h-5 w-5" />
-          Download Word File
-        </a>
-      );
+    if (!file) {
+      toast({ title: "Error", description: "Please select a PDF file first", variant: "destructive" });
+      return;
     }
 
-    return (
-      <Button 
-        onClick={handleConvert} 
-        disabled={!file || isConverting}
-        className="w-full bg-orange-600 hover:bg-orange-700 text-base py-6 rounded-xl font-semibold transition-colors mt-2"
-      >
-        {isConverting ? (
-          <>
-            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            Converting...
-          </>
-        ) : (
-          <>
-            <ArrowRightLeft className="mr-2 h-5 w-5" />
-            Convert to Word
-          </>
-        )}
-      </Button>
-    );
+    setIsConverting(true);
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const convertResponse = await Instance.post("/pdf/pdf-to-word", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      console.log("SERVER RESPONSE:", convertResponse.data); // Check console if issue persists
+
+      // --- CRASH PROTECTION: Robust Filename Extraction ---
+      let generatedFileName = "";
+      const data = convertResponse.data;
+
+      if (typeof data === 'string') {
+        generatedFileName = data;
+      } else if (typeof data === 'object' && data !== null) {
+        // Try every possible key the backend might be using
+        generatedFileName = 
+          data.fileName || 
+          data.filename || 
+          data.outputFile || 
+          data.file || 
+          data.name ||
+          ""; 
+      }
+
+      // If we still don't have a string, throw error to prevent React crash
+      if (!generatedFileName || typeof generatedFileName !== 'string') {
+        console.error("Invalid Filename:", generatedFileName);
+        throw new Error("Server returned a response, but could not find the filename.");
+      }
+
+      const fileData: ConvertedFileDetails = {
+        originalName: file.name,
+        outputFileName: generatedFileName,
+        message: "PDF converted to Word successfully!",
+      };
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(fileData));
+      setConvertedFile(fileData);
+
+      toast({
+        title: "Conversion Complete!",
+        description: "Your document is ready for download.",
+      });
+
+    } catch (error: any) {
+      console.error("Conversion failed:", error);
+      let errorMessage = "There was an error processing your request.";
+
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      toast({
+        title: "Process Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsConverting(false);
+    }
+  };
+
+  const handleDownload = async () => {
+    // Safety check
+    if (!convertedFile || !convertedFile.outputFileName) {
+      toast({ title: "Download Error", description: "No file available to download.", variant: "destructive" });
+      return;
+    }
+
+    const filenameToDownload = convertedFile.outputFileName;
+    const token = localStorage.getItem("authToken");
+
+    try {
+      toast({ title: "Download Started", description: "Fetching your Word document..." });
+
+      const response = await Instance.get(`/pdf/download/${filenameToDownload}`, {
+        headers: { 'Authorization': token ? `${token}` : '' },
+        responseType: "blob",
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      
+      const downloadName = convertedFile.originalName 
+        ? convertedFile.originalName.replace(/\.pdf$/i, ".docx")
+        : "converted-document.docx";
+        
+      link.setAttribute("download", downloadName);
+      document.body.appendChild(link);
+      link.click();
+      
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast({ title: "Download Complete", description: "File saved to your device." });
+
+    } catch (error) {
+      console.error("Download Error:", error);
+      toast({ title: "Download Failed", description: "Could not download the file.", variant: "destructive" });
+    }
+  };
+
+  const handleReset = () => {
+    setFile(null);
+    setConvertedFile(null);
+    localStorage.removeItem(STORAGE_KEY);
+    const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+    if (fileInput) fileInput.value = '';
   };
 
   return (
-    <div className="relative flex flex-col min-h-screen bg-[#0f172a] font-sans text-slate-50 selection:bg-orange-500/30 selection:text-orange-200 overflow-x-hidden">
-       
-       {/* --- AMBIENT BACKGROUND --- */}
-       <div className="fixed inset-0 z-0 pointer-events-none">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-[#0f172a] to-black" />
-        <motion.div animate={{ opacity: [0.4, 0.6, 0.4], scale: [1, 1.1, 1], rotate: [0, 5, 0] }} transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }} className="absolute -top-[20%] left-[10%] w-[60vw] h-[60vw] bg-orange-600/10 rounded-full blur-[120px]" />
-        <motion.div animate={{ opacity: [0.3, 0.5, 0.3], scale: [1, 1.2, 1], rotate: [0, -5, 0] }} transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }} className="absolute -bottom-[10%] right-[0%] w-[50vw] h-[50vw] bg-red-600/10 rounded-full blur-[100px]" />
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay" />
+    <div className="relative flex flex-col min-h-screen bg-slate-50 font-sans text-slate-900 overflow-x-hidden">
+      
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white via-slate-50 to-slate-100" />
+        <motion.div
+          animate={{ opacity: [0.4, 0.6, 0.4], scale: [1, 1.1, 1], rotate: [0, 5, 0] }}
+          transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute -top-[20%] left-[10%] w-[60vw] h-[60vw] bg-orange-200/40 rounded-full blur-[120px]"
+        />
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-multiply" />
       </div>
 
       <div className="relative z-10 flex flex-col min-h-screen">
-        <Header isAuthenticated={isAuthenticated} isAdmin={isAdmin} onLogout={() => console.log("Logout")} />
-      
+        <Header isAuthenticated={isAuthenticated} isAdmin={isAdmin} onLogout={() => { localStorage.removeItem("authToken"); window.location.href = "/login"; }} />
+
         <main className="flex-1 flex-col py-16">
           <div className="max-w-7xl mx-auto space-y-6 px-4 sm:px-6 lg:px-8">
-
-            <Link
-              to="/tools"
-              className="inline-flex items-center bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white gap-2 text-sm font-medium hover:bg-white/10 transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4 text-slate-400" />
-              <span className="text-slate-300">Back to Tools</span>
+            <Link to="/tools" className="inline-flex items-center bg-white border border-slate-200 rounded-lg px-4 py-2 text-slate-700 gap-2 text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm">
+              <ArrowLeft className="h-4 w-4 text-slate-500" />
+              <span className="text-slate-600">Back to Tools</span>
             </Link>
 
             <div className="text-center space-y-3">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-500/20 border border-orange-500/30 animate-float">
-                <ArrowRightLeft className="h-8 w-8 text-orange-400" />
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-100 border border-orange-200 animate-float">
+                <ArrowRightLeft className="h-8 w-8 text-orange-500" />
               </div>
               <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
-                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-red-500 to-amber-500 animate-gradient-x">PDF to Word</span>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 via-red-500 to-amber-500 animate-gradient-x">
+                  PDF to Word
+                </span>
               </h1>
-              <p className="text-lg text-slate-400 max-w-xl mx-auto">
+              <p className="text-lg text-slate-500 max-w-xl mx-auto">
                 Convert your PDF to an editable Word document (.docx)
               </p>
             </div>
 
-            {/* === HOW IT WORKS SECTION === */}
-            <div className="space-y-8 py-6">
-              <div className="relative">
-                <div className="absolute left-0 right-0 top-6 h-0.5 border-t-2 border-dashed border-white/10 -z-10 hidden md:block" />
-                <div className="flex flex-col md:flex-row gap-6 justify-between">
-                   {[
-                    { step: 1, title: "Upload PDF", desc: "Select file to convert" },
-                    { step: 2, title: "Convert", desc: "Process to Word" },
-                    { step: 3, title: "Download", desc: "Get your .docx file" }
-                  ].map((item) => (
-                    <div key={item.step} className="flex flex-col items-center text-center flex-1">
-                       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-900 border-2 border-orange-500/30 text-orange-400 font-bold text-lg flex-shrink-0 z-10 shadow-[0_0_15px_rgba(249,115,22,0.3)]">
-                        {item.step}
+            {/* === MAIN CARD AREA === */}
+            <div className="max-w-3xl mx-auto mt-8">
+              {!convertedFile ? (
+                // --- STATE 1: UPLOAD & CONVERT ---
+                <Card className="bg-white/80 backdrop-blur-md shadow-xl border border-slate-200">
+                  <CardHeader>
+                    <CardTitle className="text-slate-900">Upload PDF File</CardTitle>
+                    <CardDescription className="text-slate-500">
+                      Select a PDF file to convert to Word
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors bg-slate-50 ${isConverting ? "opacity-50 pointer-events-none border-slate-300" : file ? "border-orange-500" : "border-slate-300 hover:border-orange-500"}`}>
+                      <Upload className="mx-auto h-12 w-12 text-slate-400 mb-2" />
+                      <label htmlFor="file-upload" className="cursor-pointer">
+                        <span className="text-orange-600 font-semibold hover:text-orange-500 transition-colors">Choose file</span>
+                        <span className="text-slate-500"> or drag and drop</span>
+                        <input id="file-upload" type="file" accept=".pdf" disabled={isConverting} className="hidden" onChange={handleFileSelect} />
+                      </label>
+                      <p className="text-sm text-slate-500 mt-2">PDF files only</p>
+                    </div>
+
+                    {file && (
+                      <div className="p-4 rounded-xl border bg-white border-orange-200 shadow-sm flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-slate-900 truncate max-w-[200px] sm:max-w-md">{file.name}</p>
+                          <p className="text-sm text-slate-500">Size: {(file.size / (1024 * 1024)).toFixed(2)} MB</p>
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={() => setFile(null)} disabled={isConverting} className="text-slate-400 hover:text-red-500">Remove</Button>
                       </div>
-                      <h4 className="font-semibold mb-1 mt-3 text-white">{item.title}</h4>
-                      <p className="text-sm text-slate-400 px-2">{item.desc}</p>
+                    )}
+
+                    <Button onClick={handleConvert} disabled={!file || isConverting} className="w-full bg-orange-600 hover:bg-orange-700 text-base py-6 rounded-xl font-semibold transition-colors mt-2 text-white shadow-lg shadow-orange-500/20">
+                      {isConverting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Processing...</> : <><ArrowRightLeft className="mr-2 h-5 w-5" />Convert to Word</>}
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                // --- STATE 2: SUCCESS & DOWNLOAD ---
+                <Card className="bg-emerald-50 backdrop-blur-md shadow-xl border border-emerald-200 h-full relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-500 to-emerald-400" />
+                  <CardHeader>
+                    <div className="flex items-center gap-3 mb-2">
+                      <CheckCircle className="h-6 w-6 text-emerald-600" />
+                      <CardTitle className="text-emerald-900">Conversion Complete!</CardTitle>
                     </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* === Upload Section === */}
-            <div className="max-w-3xl mx-auto">
-              <Card className="bg-slate-900/40 backdrop-blur-md shadow-xl border border-white/10">
-                <CardHeader>
-                  <CardTitle className="text-white">Upload PDF File</CardTitle>
-                  <CardDescription className="text-slate-400">
-                    Select a PDF file to convert to Word
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors bg-slate-900/50 ${file ? 'border-orange-500/50' : 'border-slate-700 hover:border-orange-500/50'}`}>
-                    <Upload className="mx-auto h-12 w-12 text-slate-500 mb-2" />
-                    <label htmlFor="file-upload" className="cursor-pointer">
-                      <span className="text-orange-400 font-semibold hover:text-orange-300 transition-colors">Choose file</span>
-                      {" "}<span className="text-slate-400">or drag and drop</span>
-                      <input
-                        id="file-upload"
-                        type="file"
-                        accept=".pdf"
-                        className="hidden"
-                        onChange={handleFileSelect}
-                      />
-                    </label>
-                    <p className="text-sm text-slate-500 mt-2">PDF files only</p>
-                  </div>
-
-                  {file && (
-                    <div className="p-4 rounded-xl border bg-slate-800/60 border-orange-500/20">
-                      <p className="font-medium text-white">Selected: {file.name}</p>
-                      <p className="text-sm text-slate-400">
-                        Size: {(file.size / (1024 * 1024)).toFixed(2)} MB
-                      </p>
+                    {/* SAFE RENDER: Wrapped in String() to prevent Object-Render crash */}
+                    <CardDescription className="text-emerald-700">
+                      {String(convertedFile?.message || "File converted successfully")}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="bg-white/60 rounded-xl p-6 border border-emerald-100 space-y-4">
+                      <div className="flex items-center justify-between p-3 bg-emerald-100/50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-white rounded-md border border-emerald-200">
+                                <FileText className="h-5 w-5 text-emerald-600" />
+                            </div>
+                            <div>
+                                <span className="text-emerald-700 text-xs block uppercase font-semibold">Output File</span>
+                                {/* SAFE RENDER: Wrapped in String() */}
+                                <span className="text-emerald-900 font-mono text-sm truncate max-w-[200px] block">
+                                  {String(convertedFile?.outputFileName || "Unknown_File")}
+                                </span>
+                            </div>
+                        </div>
+                      </div>
                     </div>
-                  )}
-                  
-                  {renderActionButton()}
-                  
-                </CardContent>
-              </Card>
-            </div>
 
+                    <div className="flex flex-col sm:flex-row gap-4">
+                      <Button onClick={handleDownload} className="flex-1 bg-green-600 hover:bg-green-700 text-white py-6 rounded-xl font-semibold shadow-lg shadow-green-900/10 transition-all hover:scale-[1.02]">
+                        <Download className="mr-2 h-5 w-5" />
+                        Download Word File
+                      </Button>
+                      <Button variant="outline" onClick={handleReset} className="bg-white border-slate-300 text-slate-700 hover:bg-slate-100 py-6 rounded-xl">
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Convert Another
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           </div>
         </main>
         <Footer />

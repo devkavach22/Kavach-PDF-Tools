@@ -1,23 +1,35 @@
-// models/OcrRecord.js
-const mongoose = require('mongoose');
+import mongoose from "mongoose";
 
-const ocrRecordSchema = new mongoose.Schema({
-  // Define your schema fields here
-  data: String,
-  timestamp: { type: Date, default: Date.now }
+const OcrRecordSchema = new mongoose.Schema({
+  fileId: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: "File", 
+    required: true 
+  },
+  userId: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: "User", 
+    required: true 
+  },
+  folderId: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: "Folder",
+    required: true 
+  },
+  fileName: { 
+    type: String, 
+    required: true 
+  },
+  extractedText: { 
+    type: String, 
+    default: "" 
+  },
+  createdAt: { 
+    type: Date, 
+    default: Date.now 
+  }
 });
 
-module.exports = mongoose.model('OcrRecord', ocrRecordSchema);
+const OcrRecord = mongoose.model("OcrRecord", OcrRecordSchema);
 
-// auth-backend/routes/authRoutes.js
-// const OcrRecord = require('../models/OcrRecord'); // Correctly import the model
-
-// // ... inside your route handler ...
-// try {
-//   const newRecord = new OcrRecord({ data: 'some OCR data' });
-//   await newRecord.save(); // Mongoose uses .save() on an instance
-//   // Or, if you want to use insertOne directly on the model:
-//   // await OcrRecord.insertOne({ data: 'some OCR data' });
-// } catch (error) {
-//   console.error(error);
-// }
+export default OcrRecord;

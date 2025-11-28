@@ -25,7 +25,7 @@ router.post("/merge-pdf",auth,upload.array("files",10),mergePdf);
 
 router.post("/pdf-to-word",auth,upload.single("file"),pdfToWord);
 
-router.post("/pdf-to-excel",auth,upload.array("files"),pdfToExcel);
+router.post("/pdf-to-excel",auth,upload.single("file"),pdfToExcel);
 
 router.post("/pdf-sign",auth,upload.array("files"),pdfSignature);
 

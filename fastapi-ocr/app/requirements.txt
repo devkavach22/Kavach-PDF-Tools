@@ -1,0 +1,8 @@
+fastapi==0.95.2
+uvicorn[standard]==0.22.0
+easyocr==1.6.2
+pillow==10.0.0
+pdf2image==1.16.3
+pdfplumber==0.11.2
+mammoth==1.4.19
+numpy==1.25.0

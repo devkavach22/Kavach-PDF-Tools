@@ -11,13 +11,12 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { motion } from "framer-motion";
 
-// Updated Interface based on the provided JSON response
 interface CompressedFileDetails {
   originalName: string;
-  outputFile: string; // e.g., "/output/large_test_pdf_compressed_1763978267802.pdf"
-  originalSize: number; // in bytes
-  compressedSize: number; // in bytes
-  reduction: string; // e.g., "42.61%"
+  outputFile: string;
+  originalSize: number;
+  compressedSize: number;
+  reduction: string;
   message: string;
 }
 
@@ -34,7 +33,6 @@ export default function CompressPDF() {
   const isAuthenticated = true;
   const isAdmin = false;
 
-  // 1. Check LocalStorage on mount
   useEffect(() => {
     const storedData = localStorage.getItem(STORAGE_KEY);
     if (storedData) {
@@ -47,12 +45,6 @@ export default function CompressPDF() {
       }
     }
   }, []);
-
-  const handleLogout = () => {
-    localStorage.removeItem("user");
-    localStorage.removeItem("authToken"); 
-    window.location.href = "/auth";
-  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -78,25 +70,18 @@ export default function CompressPDF() {
 
   const handleCompress = async () => {
     if (!file) {
-      toast({
-        title: "Error",
-        description: "Please select a PDF file first",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Please select a PDF file first", variant: "destructive" });
       return;
     }
 
     setIsCompressing(true);
     
     try {
-      // Prepare Form Data
       const formData = new FormData();
-      formData.append('files', file); // Matches backend expectation
+      formData.append('files', file);
       formData.append('level', compressionLevel); 
-      
       const token = localStorage.getItem("authToken");
 
-      // 2. Send file to backend
       const response = await Instance.post('/pdf/compress-pdf', formData, {
         headers: {
             'Content-Type': 'multipart/form-data', 
@@ -104,32 +89,18 @@ export default function CompressPDF() {
         }
       });
 
-      console.log("Compression Response:", response.data);
-      
-      // 3. Handle specific JSON structure
-      // The backend returns { message: "...", files: [ { ... } ] }
       if (response.data.files && response.data.files.length > 0) {
         const fileData: CompressedFileDetails = response.data.files[0];
-
-        // Store response
         localStorage.setItem(STORAGE_KEY, JSON.stringify(fileData));
         setCompressedFile(fileData); 
-        
-        toast({
-          title: "Success!",
-          description: `Reduced by ${fileData.reduction}`,
-        });
+        toast({ title: "Success!", description: `Reduced by ${fileData.reduction}` });
       } else {
         throw new Error("Invalid response structure from server");
       }
 
     } catch (error) {
       console.error(error);
-      toast({
-        title: "Compression Failed",
-        description: "There was an error compressing your file.",
-        variant: "destructive",
-      });
+      toast({ title: "Compression Failed", description: "There was an error compressing your file.", variant: "destructive" });
     } finally {
       setIsCompressing(false);
     }
@@ -139,26 +110,15 @@ export default function CompressPDF() {
     const storedData = localStorage.getItem(STORAGE_KEY);
     let fileDetails: CompressedFileDetails | null = null;
 
-    if (storedData) {
-        fileDetails = JSON.parse(storedData);
-    } else if (compressedFile) {
-        fileDetails = compressedFile;
-    }
+    if (storedData) fileDetails = JSON.parse(storedData);
+    else if (compressedFile) fileDetails = compressedFile;
 
     if (!fileDetails || !fileDetails.outputFile) {
-      toast({
-        title: "Download Error",
-        description: "No compressed file record found.",
-        variant: "destructive",
-      });
+      toast({ title: "Download Error", description: "No compressed file record found.", variant: "destructive" });
       return;
     }
 
-    // EXTRACT FILENAME from the path provided by backend
-    // Backend returns: "/output/large_test_pdf_compressed_1763978267802.pdf"
-    // We need: "large_test_pdf_compressed_1763978267802.pdf"
     const rawPath = fileDetails.outputFile;
-    // Split by slash and get the last segment (filename)
     const filenameToDownload = rawPath.split(/[/\\]/).pop();
 
     if (!filenameToDownload) {
@@ -169,23 +129,16 @@ export default function CompressPDF() {
     const token = localStorage.getItem("authToken");
     
     try {
-      toast({
-        title: "Download Started",
-        description: "Fetching your compressed file...",
-      });
+      toast({ title: "Download Started", description: "Fetching your compressed file..." });
 
-      // 4. Request download using the extracted filename
       const response = await Instance.get(`/pdf/download/${filenameToDownload}`, {
-        headers: {
-          'Authorization': token ? `${token}` : '',
-        },
+        headers: { 'Authorization': token ? `${token}` : '' },
         responseType: 'blob', 
       });
       
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      // Use the generated filename for the download attribute
       link.setAttribute('download', filenameToDownload); 
       
       document.body.appendChild(link);
@@ -193,19 +146,11 @@ export default function CompressPDF() {
       
       link.parentNode?.removeChild(link);
       window.URL.revokeObjectURL(url);
-
-      toast({
-        title: "Download Complete",
-        description: "File saved to your device.",
-      });
+      toast({ title: "Download Complete", description: "File saved to your device." });
 
     } catch (error) {
       console.error("Download Error:", error);
-      toast({
-        title: "Download Failed",
-        description: "Could not download the file.",
-        variant: "destructive",
-      });
+      toast({ title: "Download Failed", description: "Could not download the file.", variant: "destructive" });
     }
   };
 
@@ -213,28 +158,18 @@ export default function CompressPDF() {
     setFile(null);
     setCompressedFile(null);
     localStorage.removeItem(STORAGE_KEY);
-    
     const fileInput = document.getElementById('file-upload') as HTMLInputElement;
     if (fileInput) fileInput.value = '';
   };
 
   return (
-    <div className="relative flex flex-col min-h-screen bg-[#0f172a] font-sans text-slate-50 selection:bg-orange-500/30 selection:text-orange-200 overflow-x-hidden">
+    <div className="relative flex flex-col min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-orange-100 selection:text-orange-900 overflow-x-hidden">
       
-      {/* --- AMBIENT BACKGROUND --- */}
       <div className="fixed inset-0 z-0 pointer-events-none">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-[#0f172a] to-black" />
-        <motion.div 
-          animate={{ opacity: [0.4, 0.6, 0.4], scale: [1, 1.1, 1], rotate: [0, 5, 0] }} 
-          transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }} 
-          className="absolute -top-[20%] left-[10%] w-[60vw] h-[60vw] bg-orange-600/10 rounded-full blur-[120px]" 
-        />
-        <motion.div 
-          animate={{ opacity: [0.3, 0.5, 0.3], scale: [1, 1.2, 1], rotate: [0, -5, 0] }} 
-          transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }} 
-          className="absolute -bottom-[10%] right-[0%] w-[50vw] h-[50vw] bg-red-600/10 rounded-full blur-[100px]" 
-        />
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white via-slate-50 to-slate-100" />
+        <motion.div animate={{ opacity: [0.4, 0.6, 0.4], scale: [1, 1.1, 1], rotate: [0, 5, 0] }} transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }} className="absolute -top-[20%] left-[10%] w-[60vw] h-[60vw] bg-orange-200/40 rounded-full blur-[120px]" />
+        <motion.div animate={{ opacity: [0.3, 0.5, 0.3], scale: [1, 1.2, 1], rotate: [0, -5, 0] }} transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }} className="absolute -bottom-[10%] right-[0%] w-[50vw] h-[50vw] bg-red-200/40 rounded-full blur-[100px]" />
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-multiply" />
       </div>
 
       <div className="relative z-10 flex flex-col min-h-screen">
@@ -243,70 +178,56 @@ export default function CompressPDF() {
         <main className="flex-1 flex-col py-16">
           <div className="max-w-7xl mx-auto space-y-6 px-4 sm:px-6 lg:px-8">
             
-            {/* Navigation */}
-            <Link
-              to="/tools"
-              className="inline-flex items-center bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white gap-2 text-sm font-medium hover:bg-white/10 transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4 text-slate-400" />
-              <span className="text-slate-300">Back to Tools</span>
+            <Link to="/tools" className="inline-flex items-center bg-white border border-slate-200 rounded-lg px-4 py-2 text-slate-700 gap-2 text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm">
+              <ArrowLeft className="h-4 w-4 text-slate-500" />
+              <span className="text-slate-600">Back to Tools</span>
             </Link>
 
-            {/* Title Section */}
             <div className="text-center space-y-3 mb-12">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-500/20 border border-orange-500/30 animate-float">
-                <FileDown className="h-8 w-8 text-orange-400" />
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-100 border border-orange-200 animate-float">
+                <FileDown className="h-8 w-8 text-orange-500" />
               </div>
               <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-red-500 to-amber-500 animate-gradient-x">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 via-red-500 to-amber-500 animate-gradient-x">
                   Compress PDF
                 </span>
               </h1>
-              <p className="text-lg text-slate-400 max-w-xl mx-auto">
+              <p className="text-lg text-slate-500 max-w-xl mx-auto">
                 Reduce PDF file size while maintaining quality
               </p>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-4">
               
-              {/* === Left Column (Upload OR Result) === */}
               <div className="lg:col-span-2">
                 {!compressedFile ? (
-                  // VIEW 1: Upload Card
-                  <Card className="bg-slate-900/40 backdrop-blur-md shadow-xl border border-white/10 h-full">
+                  <Card className="bg-white/80 backdrop-blur-md shadow-xl border border-slate-200 h-full">
                     <CardHeader>
-                      <CardTitle className="text-white">Upload PDF File</CardTitle>
-                      <CardDescription className="text-slate-400">
+                      <CardTitle className="text-slate-900">Upload PDF File</CardTitle>
+                      <CardDescription className="text-slate-500">
                         Select the PDF file you want to compress
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                      <div className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors bg-slate-900/50 ${isCompressing ? 'opacity-50 pointer-events-none border-slate-700' : 'border-slate-700 hover:border-orange-500/50'}`}>
-                        <Upload className="mx-auto h-12 w-12 text-slate-500 mb-4" />
+                      <div className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors bg-slate-50 ${isCompressing ? 'opacity-50 pointer-events-none border-slate-300' : 'border-slate-300 hover:border-orange-500'}`}>
+                        <Upload className="mx-auto h-12 w-12 text-slate-400 mb-4" />
                         <label htmlFor="file-upload" className="cursor-pointer">
-                          <span className="text-orange-400 font-semibold hover:text-orange-300 transition-colors">Choose file</span>
-                          {" "}<span className="text-slate-400">or drag and drop</span>
-                          <input
-                            id="file-upload"
-                            type="file"
-                            accept=".pdf"
-                            disabled={isCompressing}
-                            className="hidden"
-                            onChange={handleFileSelect}
-                          />
+                          <span className="text-orange-600 font-semibold hover:text-orange-500 transition-colors">Choose file</span>
+                          {" "}<span className="text-slate-500">or drag and drop</span>
+                          <input id="file-upload" type="file" accept=".pdf" disabled={isCompressing} className="hidden" onChange={handleFileSelect} />
                         </label>
                         <p className="text-sm text-slate-500 mt-2">PDF files only</p>
                       </div>
 
                       {file && (
-                        <div className="p-4 rounded-xl border bg-slate-800/60 border-orange-500/20 flex items-center justify-between">
+                        <div className="p-4 rounded-xl border bg-white border-orange-200 shadow-sm flex items-center justify-between">
                           <div>
-                            <p className="font-medium text-white truncate max-w-[200px] sm:max-w-md">{file.name}</p>
-                            <p className="text-sm text-slate-400">
+                            <p className="font-medium text-slate-900 truncate max-w-[200px] sm:max-w-md">{file.name}</p>
+                            <p className="text-sm text-slate-500">
                               Size: {formatBytes(file.size)}
                             </p>
                           </div>
-                          <Button variant="ghost" size="sm" onClick={() => setFile(null)} disabled={isCompressing} className="text-slate-400 hover:text-red-400">
+                          <Button variant="ghost" size="sm" onClick={() => setFile(null)} disabled={isCompressing} className="text-slate-400 hover:text-red-500">
                             Remove
                           </Button>
                         </div>
@@ -314,58 +235,48 @@ export default function CompressPDF() {
                     </CardContent>
                   </Card>
                 ) : (
-                  // VIEW 2: Success / Result Card
-                  <Card className="bg-green-950/10 backdrop-blur-md shadow-xl border border-green-500/20 h-full relative overflow-hidden">
+                  <Card className="bg-emerald-50 backdrop-blur-md shadow-xl border border-emerald-200 h-full relative overflow-hidden">
                      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-500 to-emerald-400" />
                     <CardHeader>
                       <div className="flex items-center gap-3 mb-2">
-                        <CheckCircle className="h-6 w-6 text-green-500" />
-                        <CardTitle className="text-white">Compression Complete!</CardTitle>
+                        <CheckCircle className="h-6 w-6 text-emerald-600" />
+                        <CardTitle className="text-emerald-900">Compression Complete!</CardTitle>
                       </div>
-                      <CardDescription className="text-slate-400">
+                      <CardDescription className="text-emerald-700">
                         {compressedFile.message}
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                      <div className="bg-slate-900/60 rounded-xl p-6 border border-white/5 space-y-4">
-                        <div className="flex items-center justify-between p-3 bg-black/20 rounded-lg">
-                          <span className="text-slate-400 text-sm">File Name</span>
-                          {/* Display the clean filename, not the full path */}
-                          <span className="text-slate-200 font-mono text-sm truncate max-w-[200px]">
+                      <div className="bg-white/60 rounded-xl p-6 border border-emerald-100 space-y-4">
+                        <div className="flex items-center justify-between p-3 bg-emerald-100/50 rounded-lg">
+                          <span className="text-emerald-700 text-sm">File Name</span>
+                          <span className="text-emerald-900 font-mono text-sm truncate max-w-[200px]">
                             {compressedFile.outputFile.split(/[/\\]/).pop()}
                           </span>
                         </div>
                         
-                        {/* Comparison Stats */}
                         <div className="grid grid-cols-3 gap-3">
-                            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-center">
-                              <p className="text-[10px] sm:text-xs text-slate-400 uppercase">Original</p>
-                              <p className="text-sm sm:text-lg font-bold text-slate-200">{formatBytes(compressedFile.originalSize)}</p>
+                            <div className="p-3 bg-red-100 border border-red-200 rounded-lg text-center">
+                              <p className="text-[10px] sm:text-xs text-red-700 uppercase">Original</p>
+                              <p className="text-sm sm:text-lg font-bold text-slate-900">{formatBytes(compressedFile.originalSize)}</p>
                             </div>
-                            <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-center">
-                              <p className="text-[10px] sm:text-xs text-slate-400 uppercase">Compressed</p>
-                              <p className="text-sm sm:text-lg font-bold text-green-400">{formatBytes(compressedFile.compressedSize)}</p>
+                            <div className="p-3 bg-green-100 border border-green-200 rounded-lg text-center">
+                              <p className="text-[10px] sm:text-xs text-green-700 uppercase">Compressed</p>
+                              <p className="text-sm sm:text-lg font-bold text-green-700">{formatBytes(compressedFile.compressedSize)}</p>
                             </div>
-                            <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg text-center">
-                              <p className="text-[10px] sm:text-xs text-slate-400 uppercase">Reduction</p>
-                              <p className="text-sm sm:text-lg font-bold text-blue-400">{compressedFile.reduction}</p>
+                            <div className="p-3 bg-blue-100 border border-blue-200 rounded-lg text-center">
+                              <p className="text-[10px] sm:text-xs text-blue-700 uppercase">Reduction</p>
+                              <p className="text-sm sm:text-lg font-bold text-blue-700">{compressedFile.reduction}</p>
                             </div>
                         </div>
                       </div>
 
                       <div className="flex flex-col sm:flex-row gap-4">
-                         <Button 
-                            onClick={handleDownload}
-                            className="flex-1 bg-green-600 hover:bg-green-700 text-white py-6 rounded-xl font-semibold shadow-lg shadow-green-900/20 transition-all hover:scale-[1.02]"
-                         >
+                         <Button onClick={handleDownload} className="flex-1 bg-green-600 hover:bg-green-700 text-white py-6 rounded-xl font-semibold shadow-lg shadow-green-900/10 transition-all hover:scale-[1.02]">
                             <Download className="mr-2 h-5 w-5" />
                             Download PDF
                          </Button>
-                         <Button 
-                            variant="outline" 
-                            onClick={handleReset}
-                            className="bg-transparent border-slate-600 text-slate-300 hover:bg-slate-800 py-6 rounded-xl"
-                         >
+                         <Button variant="outline" onClick={handleReset} className="bg-white border-slate-300 text-slate-700 hover:bg-slate-100 py-6 rounded-xl">
                             <RefreshCw className="mr-2 h-4 w-4" />
                             Compress Another
                          </Button>
@@ -375,36 +286,30 @@ export default function CompressPDF() {
                 )}
               </div>
 
-              {/* === Right Column (Settings & Action) === */}
               <div className="lg:col-span-1 space-y-6">
                 
-                <Card className={`bg-slate-900/40 backdrop-blur-md shadow-xl border border-white/10 transition-opacity duration-300 ${compressedFile ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+                <Card className={`bg-white/80 backdrop-blur-md shadow-xl border border-slate-200 transition-opacity duration-300 ${compressedFile ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
                   <CardHeader>
-                    <CardTitle className="text-white">Compression Level</CardTitle>
-                    <CardDescription className="text-slate-400">
+                    <CardTitle className="text-slate-900">Compression Level</CardTitle>
+                    <CardDescription className="text-slate-500">
                       Choose your desired setting
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <RadioGroup 
-                      value={compressionLevel} 
-                      onValueChange={setCompressionLevel} 
-                      className="flex flex-col gap-3"
-                      disabled={isCompressing}
-                    >
+                    <RadioGroup value={compressionLevel} onValueChange={setCompressionLevel} className="flex flex-col gap-3" disabled={isCompressing}>
                       {['low', 'medium', 'high'].map((level) => (
                         <Label 
                           key={level}
                           htmlFor={level} 
                           className={`flex flex-col space-y-1 p-4 border rounded-xl cursor-pointer transition-all duration-200 
                             ${compressionLevel === level
-                              ? 'border-orange-500 bg-orange-500/10' 
-                              : 'border-slate-700 hover:border-orange-500/50 hover:bg-white/5'
+                              ? 'border-orange-500 bg-orange-50' 
+                              : 'border-slate-300 hover:border-orange-300 hover:bg-slate-50'
                             }`}
                         >
                           <div className="flex items-center space-x-3">
-                            <RadioGroupItem value={level} id={level} className="border-slate-400 text-orange-500" />
-                            <p className={`font-medium capitalize ${compressionLevel === level ? 'text-orange-400' : 'text-slate-200'}`}>
+                            <RadioGroupItem value={level} id={level} className="border-slate-400 text-orange-600" />
+                            <p className={`font-medium capitalize ${compressionLevel === level ? 'text-orange-600' : 'text-slate-900'}`}>
                               {level} Compression
                             </p>
                           </div>
@@ -423,7 +328,7 @@ export default function CompressPDF() {
                   <Button
                     onClick={handleCompress}
                     disabled={!file || isCompressing}
-                    className="w-full bg-orange-600 hover:bg-orange-700 text-white text-lg py-6 rounded-xl font-semibold disabled:opacity-50 disabled:pointer-events-none transition-all hover:scale-[1.02] shadow-lg shadow-orange-900/20"
+                    className="w-full bg-orange-600 hover:bg-orange-700 text-white text-lg py-6 rounded-xl font-semibold disabled:opacity-50 disabled:pointer-events-none transition-all hover:scale-[1.02] shadow-lg shadow-orange-500/20"
                   >
                     {isCompressing ? (
                       <>
@@ -443,7 +348,6 @@ export default function CompressPDF() {
             </div>
           </div>
         </main>
-
         <Footer />
       </div>
     </div>

@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Facebook, Twitter, Linkedin, Github, Heart } from "lucide-react";
 import { motion } from "framer-motion";
-import Kavachlogo from "@/assets/kavach (3).png";
+import Kavachlogo from "@/assets/kavach.png";
 
 export const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -28,13 +28,14 @@ export const Footer = () => {
   ];
 
   return (
-    <footer className="relative bg-[#0f172a] border-t border-white/5 pt-20 pb-10 overflow-hidden">
+    // Light Theme: bg-white, border-slate-200
+    <footer className="relative bg-white border-t border-slate-200 pt-20 pb-10 overflow-hidden">
       {/* Background Gradient Effects matching Landing */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-[1px] bg-gradient-to-r from-transparent via-orange-500/50 to-transparent blur-sm" />
-      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.02]" />
-
-      {/* Subtle Glow Orb */}
-      <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-orange-600/10 blur-[100px] rounded-full pointer-events-none" />
+      {/* Removed noise texture as it often looks messy on white backgrounds */}
+      
+      {/* Subtle Glow Orb - Adjusted for light mode */}
+      <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-orange-500/5 blur-[100px] rounded-full pointer-events-none" />
 
       <div className="container relative z-10 px-6 md:px-8 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
@@ -47,7 +48,8 @@ export const Footer = () => {
                 alt="Kavach Logo"
               />
             </div>
-            <p className="text-slate-400 max-w-sm leading-relaxed">
+            {/* Text Color: slate-600 */}
+            <p className="text-slate-600 max-w-sm leading-relaxed">
               Enterprise-grade document security and manipulation tools.
               Designed for speed, built for privacy.
             </p>
@@ -57,7 +59,8 @@ export const Footer = () => {
                   key={idx}
                   href={social.href}
                   whileHover={{ y: -4, color: "#f97316" }}
-                  className="w-10 h-10 rounded-full bg-slate-800/50 border border-white/5 flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:border-orange-500/30 transition-all duration-300"
+                  // Social Icons: bg-slate-100, border-slate-200, text-slate-500
+                  className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-200 hover:border-orange-500/30 transition-all duration-300"
                   aria-label={social.label}
                 >
                   <social.icon className="w-5 h-5" />
@@ -68,13 +71,15 @@ export const Footer = () => {
 
           {/* Quick Links - Product */}
           <div className="space-y-6">
-            <h4 className="text-lg font-semibold text-white">Product</h4>
+            {/* Heading: text-slate-900 */}
+            <h4 className="text-lg font-semibold text-slate-900">Product</h4>
             <ul className="space-y-3">
               {productLinks.map((item) => (
                 <li key={item.label}>
                   <Link
                     to={item.path}
-                    className="text-slate-400 hover:text-orange-400 transition-colors text-sm flex items-center gap-2 group"
+                    // Links: text-slate-600 -> hover:text-orange-600
+                    className="text-slate-600 hover:text-orange-600 transition-colors text-sm flex items-center gap-2 group"
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-orange-500/0 group-hover:bg-orange-500 transition-all duration-300" />
                     {item.label}
@@ -86,13 +91,13 @@ export const Footer = () => {
 
           {/* Legal */}
           <div className="space-y-6">
-            <h4 className="text-lg font-semibold text-white">Legal</h4>
+            <h4 className="text-lg font-semibold text-slate-900">Legal</h4>
             <ul className="space-y-3">
               {legalLinks.map((item) => (
                 <li key={item.label}>
                   <Link
                     to={item.path}
-                    className="text-slate-400 hover:text-orange-400 transition-colors text-sm flex items-center gap-2 group"
+                    className="text-slate-600 hover:text-orange-600 transition-colors text-sm flex items-center gap-2 group"
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-red-500/0 group-hover:bg-red-500 transition-all duration-300" />
                     {item.label}
@@ -104,7 +109,7 @@ export const Footer = () => {
         </div>
 
         {/* Bottom Bar */}
-        <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="pt-8 border-t border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-slate-500 text-sm">
             © {currentYear} Kavach PDF. All rights reserved.
           </p>

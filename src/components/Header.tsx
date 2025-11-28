@@ -24,13 +24,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import Kavachlogo from "@/assets/kavach (3).png";
+import Kavachlogo from "@/assets/kavach.png";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
-// REMOVED: import axios from "axios";
-// ADDED: Import axiosInstance instead
-import Instance from "@/lib/axiosInstance"; // <--- CHANGE 1: Import axiosInstance
+import Instance from "@/lib/axiosInstance"; 
 
 interface HeaderProps {
   isAuthenticated?: boolean;
@@ -59,46 +57,38 @@ export const Header = ({
   // --- LOGOUT HANDLER ---
   const handleLogout = async () => {
     try {
-      // CHANGE 2: Use axiosInstance instead of axios
       await Instance.post( 
-        "/auth/logout", // Base URL is in axiosInstance, so only use the path
+        "/auth/logout", 
         {},
       );
       navigate("/auth");
     } catch (err) {
       console.error("Logout failed:", err);
-      // The 401 interceptor in axiosInstance should handle redirecting for token expiration,
-      // but keeping the alert for other specific logout failures.
       alert("Logout failed. Please try again.");
     }
   };
 
   // --- MENU CONFIGURATIONS ---
-  
-  // Menu for Visitors (Unauthenticated)
   const publicMenuItems = [
-    { title: "Overview", icon: Home, href: "/" }, // Added "Overview" for "/" path
+    { title: "Overview", icon: Home, href: "/" },
     { title: "Features", icon: Zap, href: "/features" },
     { title: "Pricing", icon: CreditCard, href: "/pricing" },
-    { title: "API", icon: Code, href: "/api" },
+    { title: "API", icon: Code, href: "/api-working" },
     { title: "Integration", icon: Blocks, href: "/integration" },
   ];
 
-  // Menu for Logged In Users
   const userMenuItems = [
     { title: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
     { title: "Tools", icon: FileText, href: "/tools" },
-    { title: "File Management", icon: FolderOpen, href: "/files" },
+    { title: "Reports", icon: FolderOpen, href: "/files" },
   ];
 
-  // Menu for Admins
   const adminMenuItems = [
     { title: "Dashboard", icon: LayoutDashboard, href: "/admin" },
     { title: "Manage Users", icon: Users, href: "/manage-user" },
     { title: "System Settings", icon: Settings, href: "/system-setting" },
   ];
 
-  // Logic to determine which menu to show
   let menuItems;
   if (!isAuthenticated) {
     menuItems = publicMenuItems;
@@ -106,8 +96,6 @@ export const Header = ({
     menuItems = isAdmin ? adminMenuItems : userMenuItems;
   }
 
-  // Checks if exact match OR if the current path is a sub-path
-  // Special handling ensures "Overview" (/) isn't highlighted on every other page
   const isActive = (path: string) => {
     if (path === "/" && currentPath !== "/") return false;
     return currentPath === path || currentPath.startsWith(`${path}/`);
@@ -120,7 +108,7 @@ export const Header = ({
       className={cn(
         "fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b",
         scrolled
-          ? "bg-[#0f172a]/80 backdrop-blur-xl border-white/5 py-3 shadow-lg shadow-black/20" 
+          ? "bg-white/80 backdrop-blur-xl border-slate-200 py-3 shadow-sm" 
           : "bg-transparent border-transparent py-5"
       )}
     >
@@ -136,7 +124,8 @@ export const Header = ({
 
         {/* Desktop Navigation */}
         <div className="hidden md:block absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-          <nav className="flex items-center p-1.5 rounded-full bg-slate-900/50 border border-white/10 backdrop-blur-xl shadow-xl shadow-black/20">
+          {/* Light Theme: bg-white/50 border-slate-200 */}
+          <nav className="flex items-center p-1.5 rounded-full bg-white/50 border border-slate-200 backdrop-blur-xl shadow-sm">
             {menuItems.map((item) => (
               <Link
                 key={item.href}
@@ -159,7 +148,8 @@ export const Header = ({
                     "relative z-10 flex items-center gap-2 transition-colors duration-200",
                     isActive(item.href)
                       ? "text-white"
-                      : "text-slate-400 group-hover:text-white"
+                      // Inactive: slate-600 -> Hover: slate-900
+                      : "text-slate-600 group-hover:text-slate-900"
                   )}
                 >
                   <item.icon className="w-4 h-4" />
@@ -172,25 +162,25 @@ export const Header = ({
 
         {/* Right Actions */}
         <div className="flex items-center gap-4 relative z-50">
-          {/* Show Profile Dropdown ONLY if authenticated */}
           {isAuthenticated ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="rounded-full border border-orange-500/20 bg-orange-500/10 text-orange-500 hover:bg-orange-500/20 hover:text-orange-400 hover:shadow-[0_0_15px_rgba(249,115,22,0.3)] transition-all duration-300"
+                  className="rounded-full border border-orange-500/20 bg-orange-500/10 text-orange-600 hover:bg-orange-500/20 hover:text-orange-700 hover:shadow-[0_0_15px_rgba(249,115,22,0.3)] transition-all duration-300"
                 >
                   <User className="h-5 w-5" />
                 </Button>
               </DropdownMenuTrigger>
+              {/* Light Theme Dropdown */}
               <DropdownMenuContent
                 align="end"
-                className="w-56 bg-slate-900 border-white/10 text-slate-200 backdrop-blur-xl p-2 shadow-2xl shadow-black/50"
+                className="w-56 bg-white border-slate-200 text-slate-700 backdrop-blur-xl p-2 shadow-xl"
               >
                 <DropdownMenuItem
                   asChild
-                  className="focus:bg-white/5 focus:text-orange-400 cursor-pointer rounded-md"
+                  className="focus:bg-slate-100 focus:text-orange-600 cursor-pointer rounded-md"
                 >
                   <Link to="/profile" className="flex items-center py-2">
                     <User className="mr-2 h-4 w-4" /> Profile
@@ -198,23 +188,22 @@ export const Header = ({
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   asChild
-                  className="focus:bg-white/5 focus:text-orange-400 cursor-pointer rounded-md"
+                  className="focus:bg-slate-100 focus:text-orange-600 cursor-pointer rounded-md"
                 >
                   <Link to="/settings" className="flex items-center py-2">
                     <Settings className="mr-2 h-4 w-4" /> Settings
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-white/10 my-1" />
+                <DropdownMenuSeparator className="bg-slate-100 my-1" />
                 <DropdownMenuItem
                   onClick={handleLogout}
-                  className="text-red-400 focus:bg-red-500/10 focus:text-red-300 cursor-pointer rounded-md py-2"
+                  className="text-red-600 focus:bg-red-50 focus:text-red-700 cursor-pointer rounded-md py-2"
                 >
                   <LogOut className="mr-2 h-4 w-4" /> Logout
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            /* CTA for Unauthenticated Users */
             <Button
               asChild
               className="hidden md:flex h-10 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-400 hover:to-red-500 text-white rounded-full font-bold px-6 shadow-[0_0_20px_-5px_rgba(249,115,22,0.4)] transition-all duration-300 hover:scale-105 border-0"
@@ -225,11 +214,11 @@ export const Header = ({
             </Button>
           )}
 
-          {/* Mobile Menu Toggle */}
+          {/* Mobile Menu Toggle - Dark color for light bg */}
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden text-slate-300 hover:text-white hover:bg-white/5"
+            className="md:hidden text-slate-700 hover:text-slate-900 hover:bg-slate-100"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
             {mobileMenuOpen ? <X /> : <Menu />}
@@ -237,14 +226,14 @@ export const Header = ({
         </div>
       </div>
 
-      {/* Mobile Navigation */}
+      {/* Mobile Navigation - Light Theme */}
       <AnimatePresence>
         {mobileMenuOpen && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-[#0f172a] border-b border-white/10 overflow-hidden"
+            className="md:hidden bg-white border-b border-slate-200 overflow-hidden"
           >
             <div className="flex flex-col p-4 gap-2">
               {menuItems.map((item) => (
@@ -255,8 +244,8 @@ export const Header = ({
                   className={cn(
                     "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors font-medium",
                     isActive(item.href)
-                      ? "bg-orange-500/10 text-orange-500 border border-orange-500/20"
-                      : "text-slate-400 hover:text-white hover:bg-white/5"
+                      ? "bg-orange-50 text-orange-600 border border-orange-200"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                   )}
                 >
                   <item.icon className="w-5 h-5" />
@@ -265,11 +254,11 @@ export const Header = ({
               ))}
 
               {!isAuthenticated && (
-                <div className="mt-2 pt-2 border-t border-white/10">
+                <div className="mt-2 pt-2 border-t border-slate-100">
                   <Link
                     to="/auth"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center justify-center w-full bg-gradient-to-r from-orange-500 to-red-600 text-white font-bold py-3 rounded-lg shadow-lg shadow-orange-900/20"
+                    className="flex items-center justify-center w-full bg-gradient-to-r from-orange-500 to-red-600 text-white font-bold py-3 rounded-lg shadow-lg shadow-orange-500/20"
                   >
                     Get Started
                   </Link>

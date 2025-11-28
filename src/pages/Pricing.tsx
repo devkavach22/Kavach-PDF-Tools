@@ -6,12 +6,15 @@ import Particles, { initParticlesEngine } from "@tsparticles/react";
 import { loadSlim } from "tsparticles-slim";
 import { Check, Crown, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch"; // Ensure you have a switch component or standard input
+import { Switch } from "@/components/ui/switch"; 
 
 // ... [Insert Copy of particlesOptions & GradientBlob here] ...
+// NOTE: For light mode, ensure your particlesOptions color is set to "#000000" or a dark slate.
 const particlesOptions = { /* ... */ };
+
 const GradientBlob = ({ className }: { className?: string }) => (
-    <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0.4, 0.2], rotate: [0, 45, 0] }} transition={{ duration: 10, repeat: Infinity }} className={`absolute rounded-full mix-blend-screen blur-[90px] filter ${className}`} />
+    // Changed mix-blend-screen to mix-blend-multiply for visibility on white background
+    <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0.4, 0.2], rotate: [0, 45, 0] }} transition={{ duration: 10, repeat: Infinity }} className={`absolute rounded-full mix-blend-multiply blur-[90px] filter ${className}`} />
 );
 
 const plans = [
@@ -26,43 +29,51 @@ export default function Pricing() {
   useEffect(() => { initParticlesEngine(async (engine) => await loadSlim(engine)).then(() => setInit(true)); }, []);
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#0f172a] text-slate-100 font-sans overflow-x-hidden relative">
-      <div className="fixed inset-0 z-0 pointer-events-none"><div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03]" /><GradientBlob className="top-0 left-1/2 w-[800px] h-[800px] bg-orange-600/10 -translate-x-1/2" /></div>
+    // Changed bg-[#0f172a] to bg-white and text-slate-100 to text-slate-900
+    <div className="min-h-screen flex flex-col bg-white text-slate-900 font-sans overflow-x-hidden relative">
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03]" />
+        <GradientBlob className="top-0 left-1/2 w-[800px] h-[800px] bg-orange-200/60 -translate-x-1/2" />
+      </div>
+      
       {init && <div className="absolute inset-0 z-0 opacity-50 pointer-events-none"><Particles id="tsparticles" options={particlesOptions} className="h-full w-full" /></div>}
       <div className="relative z-50"><Header /></div>
 
       <main className="relative z-10 pt-32 pb-24 px-6">
         <div className="container max-w-7xl mx-auto text-center">
-          <h1 className="text-5xl font-bold text-white mb-6">Simple, Transparent <span className="text-orange-500">Pricing</span></h1>
-          <p className="text-slate-400 mb-10">Choose the shield that fits your workflow.</p>
+          <h1 className="text-5xl font-bold text-slate-900 mb-6">Simple, Transparent <span className="text-orange-600">Pricing</span></h1>
+          <p className="text-slate-500 mb-10">Choose the shield that fits your workflow.</p>
 
           {/* Toggle */}
           <div className="flex justify-center items-center gap-4 mb-16">
-            <span className={`text-sm font-medium ${!annual ? 'text-white' : 'text-slate-500'}`}>Monthly</span>
-            <div onClick={() => setAnnual(!annual)} className="w-14 h-7 rounded-full bg-slate-800 border border-white/10 relative cursor-pointer transition-colors hover:border-orange-500/50">
+            <span className={`text-sm font-medium ${!annual ? 'text-slate-900' : 'text-slate-500'}`}>Monthly</span>
+            {/* Updated Toggle background colors for light theme */}
+            <div onClick={() => setAnnual(!annual)} className="w-14 h-7 rounded-full bg-slate-200 border border-slate-300 relative cursor-pointer transition-colors hover:border-orange-500/50">
                 <motion.div animate={{ x: annual ? 28 : 2 }} className="absolute top-1 left-0 w-5 h-5 rounded-full bg-orange-500 shadow-lg shadow-orange-500/50" />
             </div>
-            <span className={`text-sm font-medium ${annual ? 'text-white' : 'text-slate-500'}`}>Yearly <span className="text-orange-400 text-xs ml-1">(Save 20%)</span></span>
+            <span className={`text-sm font-medium ${annual ? 'text-slate-900' : 'text-slate-500'}`}>Yearly <span className="text-orange-600 text-xs ml-1">(Save 20%)</span></span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
             {plans.map((plan, idx) => (
               <motion.div key={idx} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.1 }}
-                className={`relative p-8 rounded-3xl border text-left flex flex-col ${plan.highlight ? 'bg-slate-900 border-orange-500/50 shadow-[0_0_60px_-15px_rgba(249,115,22,0.3)] z-10 scale-105' : 'bg-slate-900/50 border-white/5'}`}
+                // Updated card backgrounds: Highlight is white with shadow, Standard is slate-50 with light border
+                className={`relative p-8 rounded-3xl border text-left flex flex-col ${plan.highlight ? 'bg-white border-orange-200 shadow-[0_0_60px_-15px_rgba(249,115,22,0.15)] z-10 scale-105 ring-1 ring-orange-100' : 'bg-slate-50 border-slate-200'}`}
               >
                 {plan.highlight && <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-bold uppercase tracking-widest rounded-full shadow-lg">{plan.badge}</div>}
-                <h3 className={`text-xl font-bold mb-2 ${plan.highlight ? 'text-orange-400' : 'text-slate-300'}`}>{plan.name}</h3>
+                <h3 className={`text-xl font-bold mb-2 ${plan.highlight ? 'text-orange-600' : 'text-slate-700'}`}>{plan.name}</h3>
                 <div className="flex items-baseline gap-1 mb-2">
-                   <span className="text-4xl font-bold text-white">{annual && plan.price !== "$0" ? `$${parseInt(plan.price.slice(1)) * 10}` : plan.price}</span>
+                   <span className="text-4xl font-bold text-slate-900">{annual && plan.price !== "$0" ? `$${parseInt(plan.price.slice(1)) * 10}` : plan.price}</span>
                    <span className="text-slate-500">{annual && plan.price !== "$0" ? "/yr" : plan.period}</span>
                 </div>
-                <p className="text-slate-400 text-sm mb-8">{plan.desc}</p>
+                <p className="text-slate-500 text-sm mb-8">{plan.desc}</p>
                 <ul className="space-y-4 mb-8 flex-1">
                     {plan.features.map((f, i) => (
-                        <li key={i} className="flex items-start gap-3 text-sm text-slate-300"><Check className={`w-5 h-5 shrink-0 ${plan.highlight ? 'text-orange-500' : 'text-slate-600'}`} /> {f}</li>
+                        // Updated check icon and text colors
+                        <li key={i} className="flex items-start gap-3 text-sm text-slate-600"><Check className={`w-5 h-5 shrink-0 ${plan.highlight ? 'text-orange-500' : 'text-slate-400'}`} /> {f}</li>
                     ))}
                 </ul>
-                <Button className={`w-full rounded-xl font-bold h-12 ${plan.highlight ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white hover:shadow-lg hover:shadow-orange-500/20' : 'bg-white/5 hover:bg-white/10 text-white'}`}>Choose {plan.name}</Button>
+                <Button className={`w-full rounded-xl font-bold h-12 ${plan.highlight ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white hover:shadow-lg hover:shadow-orange-500/20' : 'bg-slate-200 hover:bg-slate-300 text-slate-900'}`}>Choose {plan.name}</Button>
               </motion.div>
             ))}
           </div>

@@ -1,70 +1,109 @@
-// controllers/pdf/pdfToWord.js
 import fs from "fs";
 import path from "path";
 import { execFile } from "child_process";
-import { OUTPUT_DIR, removeFiles } from "../../utils/fileUtils.js";
+import pkg from "uuid";
+import { OUTPUT_DIR, removeFiles } from "../../utils/fileUtils.js"; // reuse utilities
+const { v4: uuid } = pkg;
 
-/**
- * POST /api/pdf/pdf-to-word
- * upload.single('file')
- * returns .docx
- */
+// Ensure OUTPUT_DIR exists
+if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 
-function runLibreConvert(inputPath, outputDir, outExt) {
-  return new Promise((resolve, reject) => {
-    const candidates = ["soffice", "libreoffice"];
-    let tryIndex = 0;
-
-    const tryExec = () => {
-      const cmd = candidates[tryIndex];
-      const args = ["--headless", "--convert-to", outExt, "--outdir", outputDir, inputPath];
-      execFile(cmd, args, (err, stdout, stderr) => {
-        if (!err) return resolve({ cmd, stdout });
-        tryIndex++;
-        if (tryIndex >= candidates.length) return reject(err);
-        tryExec();
+// Detect available Python executable
+function detectPython() {
+  return new Promise((resolve) => {
+    execFile("python3", ["--version"], (err) => {
+      if (!err) return resolve("python3");
+      execFile("python", ["--version"], (err2) => {
+        if (!err2) return resolve("python");
+        resolve(null);
       });
-    };
+    });
+  });
+}
 
-    tryExec();
+// Check if pdf2docx is installed
+function checkPdf2Docx(pythonExec) {
+  return new Promise((resolve, reject) => {
+    execFile(pythonExec, ["-c", "import pdf2docx"], (err) => {
+      if (err) return reject(new Error("Python module 'pdf2docx' not installed."));
+      resolve(true);
+    });
+  });
+}
+
+// Call Python pdf2docx script
+function convertPdfToDocxWithPython(pythonExec, inputPdf, outputDocx) {
+  return new Promise((resolve, reject) => {
+    const pythonScript = path.join(process.cwd(), "convert_pdf_to_docx.py");
+    if (!fs.existsSync(pythonScript)) {
+      return reject(new Error("Python script convert_pdf_to_docx.py not found."));
+    }
+
+    execFile(pythonExec, [pythonScript, inputPdf, outputDocx], (err, stdout, stderr) => {
+      console.log("Python stdout:", stdout);
+      console.log("Python stderr:", stderr);
+      if (err) return reject(new Error(stderr || err));
+      resolve(stdout);
+    });
   });
 }
 
 export const pdfToWord = async (req, res) => {
   try {
-    const file = req.file;
-    if (!file) return res.status(400).json({ error: "Upload PDF as 'file'." });
+    const files = req.files || (req.file ? [req.file] : []);
+    if (!files.length)
+      return res.status(400).json({ error: "Upload PDF(s) in 'files' or 'file'." });
 
-    const outExt = "docx";
+    const pythonExec = await detectPython();
+    if (!pythonExec) {
+      return res.status(500).json({ error: "Python not found. Install Python 3." });
+    }
+
     try {
-      await runLibreConvert(file.path, OUTPUT_DIR, outExt);
+      await checkPdf2Docx(pythonExec);
     } catch (err) {
-      removeFiles([file.path]);
-      console.error("LibreOffice convert error:", err);
-      return res.status(500).json({ error: "Conversion failed. Ensure LibreOffice is installed." });
+      return res.status(500).json({ error: "Python module 'pdf2docx' is not installed. Run: pip install pdf2docx" });
     }
 
-    const base = path.parse(file.originalname).name;
-    // LibreOffice usually writes `${base}.docx` in OUTPUT_DIR
-    let outPath = path.join(OUTPUT_DIR, `${base}.docx`);
-    if (!fs.existsSync(outPath)) {
-      // try to find most recent docx in OUTPUT_DIR
-      const candidates = fs.readdirSync(OUTPUT_DIR)
-        .filter(n => n.endsWith(".docx"))
-        .map(n => path.join(OUTPUT_DIR, n));
-      if (candidates.length === 0) {
-        removeFiles([file.path]);
-        return res.status(500).json({ error: "Conversion finished but output not found." });
+    const responseData = [];
+
+    for (const f of files) {
+      const baseName = path.parse(f.originalname).name.replace(/[^a-zA-Z0-9-_]/g, "_");
+      const outName = `${baseName}_${Date.now()}.docx`;
+      const outPath = path.join(OUTPUT_DIR, outName);
+
+      try {
+        await convertPdfToDocxWithPython(pythonExec, f.path, outPath);
+
+        if (!fs.existsSync(outPath)) {
+          throw new Error("DOCX not generated");
+        }
+
+        responseData.push({
+          originalName: f.originalname,
+          outputFile: `/outputs/${outName}`, // <-- public path to download
+          message: "Conversion successful"
+        });
+
+        removeFiles([f.path]); // delete uploaded PDF
+
+      } catch (err) {
+        responseData.push({
+          originalName: f.originalname,
+          outputFile: null,
+          message: "Conversion failed",
+          error: err.message
+        });
       }
-      candidates.sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
-      outPath = candidates[0];
     }
 
-    const outName = path.basename(outPath);
-    removeFiles([file.path]);
-    return res.download(outPath, outName);
+    return res.json({
+      message: "PDF to Word conversion completed",
+      files: responseData
+    });
+
   } catch (err) {
     console.error("pdfToWord error:", err);
-    return res.status(500).json({ error: "pdfToWord failed: " + (err.message || err) });
+    return res.status(500).json({ error: "pdfToWord failed: " + err.message });
   }
 };

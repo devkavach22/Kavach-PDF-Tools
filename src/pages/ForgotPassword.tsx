@@ -53,11 +53,11 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-[#0f172a] relative overflow-hidden p-4 font-sans selection:bg-orange-500/30 selection:text-orange-100">
+    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 relative overflow-hidden p-4 font-sans selection:bg-orange-500/30 selection:text-orange-900">
       {/* Background Effects */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-        <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0.3, 0.2], rotate: [0, 90, 0] }} transition={{ duration: 20, repeat: Infinity, ease: "linear" }} className="absolute top-[-20%] left-[-10%] w-[800px] h-[800px] bg-orange-600/20 blur-[120px] rounded-full mix-blend-screen" />
-        <motion.div animate={{ scale: [1, 1.3, 1], opacity: [0.15, 0.25, 0.15], rotate: [0, -90, 0] }} transition={{ duration: 25, repeat: Infinity, ease: "linear", delay: 2 }} className="absolute bottom-[-20%] right-[-10%] w-[800px] h-[800px] bg-red-600/15 blur-[120px] rounded-full mix-blend-screen" />
+        <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0.3, 0.2], rotate: [0, 90, 0] }} transition={{ duration: 20, repeat: Infinity, ease: "linear" }} className="absolute top-[-20%] left-[-10%] w-[800px] h-[800px] bg-orange-200/50 blur-[120px] rounded-full mix-blend-multiply" />
+        <motion.div animate={{ scale: [1, 1.3, 1], opacity: [0.15, 0.25, 0.15], rotate: [0, -90, 0] }} transition={{ duration: 25, repeat: Infinity, ease: "linear", delay: 2 }} className="absolute bottom-[-20%] right-[-10%] w-[800px] h-[800px] bg-red-200/40 blur-[120px] rounded-full mix-blend-multiply" />
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150" />
       </div>
 
@@ -68,31 +68,31 @@ export default function ForgotPassword() {
 
       <motion.div onMouseMove={handleMouseMove} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: "easeOut" }} className="group relative z-10 w-full max-w-md rounded-3xl p-[1px] overflow-hidden">
         <motion.div className="pointer-events-none absolute -inset-px rounded-3xl opacity-0 transition duration-300 group-hover:opacity-100"
-          style={{ background: useMotionTemplate`radial-gradient(600px circle at ${mouseX}px ${mouseY}px, rgba(251, 146, 60, 0.15), transparent 80%)` }}
+          style={{ background: useMotionTemplate`radial-gradient(600px circle at ${mouseX}px ${mouseY}px, rgba(251, 146, 60, 0.25), transparent 80%)` }}
         />
 
-        <div className="relative bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-white/10 shadow-2xl overflow-hidden p-8 md:p-10">
+        <div className="relative bg-white/80 backdrop-blur-xl rounded-3xl border border-slate-200 shadow-2xl overflow-hidden p-8 md:p-10">
           <div className="flex justify-center mb-8">
             <div className="relative">
               <div className="absolute inset-0 bg-orange-500 blur-xl opacity-20 rounded-full animate-pulse"></div>
-              <div className="relative w-16 h-16 bg-slate-950 border border-white/10 rounded-2xl flex items-center justify-center shadow-inner">
-                <KeyRound className="w-8 h-8 text-orange-400" />
+              <div className="relative w-16 h-16 bg-white border border-slate-200 rounded-2xl flex items-center justify-center shadow-lg">
+                <KeyRound className="w-8 h-8 text-orange-500" />
               </div>
             </div>
           </div>
 
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }}>
             <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-white mb-2">Forgot Password?</h2>
-              <p className="text-slate-400 text-sm">Enter your email to proceed to password reset.</p>
+              <h2 className="text-2xl font-bold text-slate-900 mb-2">Forgot Password?</h2>
+              <p className="text-slate-500 text-sm">Enter your email to proceed to password reset.</p>
             </div>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2 group">
-                <Label htmlFor="email" className="text-slate-300 group-focus-within:text-orange-400 transition-colors">Email Address</Label>
+                <Label htmlFor="email" className="text-slate-700 group-focus-within:text-orange-600 transition-colors">Email Address</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-orange-400 transition-colors w-5 h-5" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-orange-500 transition-colors w-5 h-5" />
                   <Input id="email" type="email" placeholder="name@company.com" value={email} onChange={(e) => setEmail(e.target.value)} required
-                    className="bg-slate-950/50 border-white/10 text-slate-100 pl-10 placeholder:text-slate-600 focus:border-orange-500 focus:ring-orange-500/20 rounded-lg h-11 transition-all duration-300"
+                    className="bg-slate-50 border-slate-200 text-slate-900 pl-10 placeholder:text-slate-400 focus:border-orange-500 focus:ring-orange-500/20 rounded-lg h-11 transition-all duration-300"
                   />
                 </div>
               </div>
@@ -102,8 +102,8 @@ export default function ForgotPassword() {
             </form>
           </motion.div>
 
-          <div className="mt-8 text-center border-t border-white/10 pt-6">
-            <Link to="/auth" className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-medium group">
+          <div className="mt-8 text-center border-t border-slate-200 pt-6">
+            <Link to="/auth" className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors text-sm font-medium group">
               <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> Back to Login
             </Link>
           </div>

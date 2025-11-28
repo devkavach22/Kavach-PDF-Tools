@@ -10,42 +10,25 @@ import { motion, AnimatePresence, useMotionTemplate, useMotionValue } from "fram
 import Particles from "@tsparticles/react";
 import { loadSlim } from "tsparticles-slim";
 import type { Engine } from "tsparticles-engine";
-import Kavachlogo from "@/assets/kavach (3).png"; 
-// IMPORT THE CUSTOM INSTANCE
-import Instance from "@/lib/axiosInstance"; // Adjust path if necessary (e.g., "@/utils/axiosInstance")
+import Instance from "@/lib/axiosInstance";
 
-// --- Particles Config (Matched to Landing.tsx) ---
+// --- Particles Config (Matched to Light Theme) ---
 const particlesOptions = {
   fullScreen: { enable: false, zIndex: 0 },
   background: { color: { value: "transparent" } },
   fpsLimit: 120,
-  interactivity: {
-    events: {
-      onHover: { enable: true, mode: "repulse" },
-      resize: true,
-    },
-    modes: {
-      repulse: { distance: 150, duration: 0.4 },
-    },
-  },
   particles: {
-    color: { value: ["#fb923c", "#f87171", "#fbbf24"] }, // Orange, Red, Amber
+    color: { value: ["#fb923c", "#f87171", "#fbbf24"] },
     links: {
-      color: "#fb923c",
+      color: "#cbd5e1", // Light grey links
       distance: 150,
       enable: true,
       opacity: 0.2,
       width: 1,
     },
-    move: {
-      enable: true,
-      speed: 1,
-      direction: "none",
-      random: true,
-      outModes: { default: "bounce" },
-    },
+    move: { enable: true, speed: 1 },
     number: { density: { enable: true, area: 800 }, value: 80 },
-    opacity: { value: 0.4 },
+    opacity: { value: 0.5 },
     shape: { type: "circle" },
     size: { value: { min: 1, max: 3 } },
   },
@@ -58,7 +41,6 @@ export default function Auth() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // --- Form State ---
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [signupName, setSignupName] = useState("");
@@ -83,38 +65,19 @@ export default function Auth() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-
-    // Payload object (Axios handles stringifying)
-    const payload = { 
-        email: loginEmail, 
-        password: loginPassword 
-    };
+    const payload = { email: loginEmail, password: loginPassword };
 
     try {
-      // Using Instance: BaseURL is already set, Headers are set
       const response = await Instance.post('/auth/login', payload);
-      
       if (response.data.token) {
-        // CHANGED: using 'authToken' to match axiosInstance.ts logic
         localStorage.setItem("authToken", response.data.token);
       }
-      
       localStorage.setItem("user", JSON.stringify(response.data));
-      
-      toast({ 
-        title: "Access Granted", 
-        description: response.data.message || "Welcome back to Kavach Protocol." 
-      });
-      
+      toast({ title: "Access Granted", description: response.data.message || "Welcome back to Kavach Protocol." });
       navigate("/dashboard");
 
     } catch (error: any) {
-      console.log(error);
-      toast({
-        title: "Login Error",
-        description: error.response?.data?.message || "Invalid email or password.",
-        variant: "destructive",
-      });
+      toast({ title: "Login Error", description: error.response?.data?.message || "Invalid email or password.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -123,60 +86,39 @@ export default function Auth() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-
-    // Payload object
-    const payload = {
-      name: signupName,
-      email: signupEmail,
-      password: signupPassword,
-      role: "user"
-    };
+    const payload = { name: signupName, email: signupEmail, password: signupPassword, role: "user" };
 
     try {
-      // Using Instance
       const response = await Instance.post('/auth/register', payload);
-      
       localStorage.setItem("registrationData", JSON.stringify(response.data));
-      
-      toast({ 
-        title: "Identity Verified", 
-        description: "Your secure workspace is initializing. Please log in." 
-      });
-      
-      // Switch to login tab with pre-filled email
+      toast({ title: "Identity Verified", description: "Your secure workspace is initializing. Please log in." });
       setLoginEmail(signupEmail);
-      setSignupName("");
-      setSignupEmail("");
-      setSignupPassword("");
+      setSignupName(""); setSignupEmail(""); setSignupPassword("");
       setActiveTab("login");
 
     } catch (error: any) {
-      toast({
-        title: "Signup Error",
-        description: error.response?.data?.message || "Could not create account.",
-        variant: "destructive",
-      });
+      toast({ title: "Signup Error", description: error.response?.data?.message || "Could not create account.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-[#0f172a] relative overflow-hidden p-4 md:p-8 font-sans selection:bg-orange-500/30 selection:text-orange-100">
+    <div className="min-h-screen w-full flex items-center justify-center bg-slate-50 relative overflow-hidden p-4 md:p-8 font-sans selection:bg-orange-200 selection:text-orange-900">
       
-      {/* --- Background Ambience --- */}
+      {/* --- Background Ambience (Light Mode) --- */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
         <motion.div 
-          animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0.3, 0.2], rotate: [0, 90, 0] }}
+          animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3], rotate: [0, 90, 0] }}
           transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-          className="absolute top-[-20%] left-[-10%] w-[800px] h-[800px] bg-orange-600/20 blur-[120px] rounded-full mix-blend-screen" 
+          className="absolute top-[-20%] left-[-10%] w-[800px] h-[800px] bg-orange-200/50 blur-[120px] rounded-full" 
         />
         <motion.div 
-          animate={{ scale: [1, 1.3, 1], opacity: [0.15, 0.25, 0.15], rotate: [0, -90, 0] }}
+          animate={{ scale: [1, 1.3, 1], opacity: [0.2, 0.4, 0.2], rotate: [0, -90, 0] }}
           transition={{ duration: 25, repeat: Infinity, ease: "linear", delay: 2 }}
-          className="absolute bottom-[-20%] right-[-10%] w-[800px] h-[800px] bg-red-600/15 blur-[120px] rounded-full mix-blend-screen" 
+          className="absolute bottom-[-20%] right-[-10%] w-[800px] h-[800px] bg-red-200/40 blur-[120px] rounded-full" 
         />
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150" />
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10" />
       </div>
 
       <div className="absolute inset-0 z-0 h-full w-full pointer-events-none">
@@ -191,42 +133,42 @@ export default function Auth() {
         transition={{ duration: 0.5, ease: "easeOut" }}
         className="group relative z-10 w-full max-w-5xl rounded-3xl p-[1px] overflow-hidden"
       >
-        {/* Spotlight Gradient Border (Orange/Red) */}
+        {/* Spotlight Gradient Border */}
         <motion.div
           className="pointer-events-none absolute -inset-px rounded-3xl opacity-0 transition duration-300 group-hover:opacity-100"
           style={{
             background: useMotionTemplate`
               radial-gradient(
                 650px circle at ${mouseX}px ${mouseY}px,
-                rgba(251, 146, 60, 0.15),
+                rgba(249, 115, 60, 0.3),
                 transparent 80%
               )
             `,
           }}
         />
 
-        <div className="relative bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-white/10 shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-2 min-h-[600px]">
+        <div className="relative bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-2 min-h-[600px]">
           
-          {/* === Left Column: Form Section === */}
-          <motion.div layout className="flex flex-col justify-center p-8 md:p-12 relative z-20">
+          {/* === Left Column: Form Section (Light) === */}
+          <motion.div layout className="flex flex-col justify-center p-8 md:p-12 relative z-20 bg-white">
             <div className="flex justify-center lg:justify-start mb-8 items-center gap-2">
-              <div className="p-2 bg-orange-500/10 rounded-lg border border-orange-500/20">
+              <div className="p-2 bg-orange-50 rounded-lg border border-orange-200">
                   <Flame className="w-6 h-6 text-orange-500" />
               </div>
-              <span className="text-xl font-bold text-white tracking-wide">KAVACH</span>
+              <span className="text-xl font-bold text-slate-900 tracking-wide">KAVACH</span>
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 bg-slate-950/60 border border-white/10 rounded-xl p-1 mb-8">
+              <TabsList className="grid w-full grid-cols-2 bg-slate-100 border border-slate-200 rounded-xl p-1 mb-8">
                 <TabsTrigger
                   value="login"
-                  className="rounded-lg data-[state=active]:bg-slate-800 data-[state=active]:text-orange-400 text-slate-400 font-medium transition-all duration-300"
+                  className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-orange-600 data-[state=active]:shadow-sm text-slate-500 font-medium transition-all duration-300"
                 >
                   Login
                 </TabsTrigger>
                 <TabsTrigger
                   value="signup"
-                  className="rounded-lg data-[state=active]:bg-slate-800 data-[state=active]:text-orange-400 text-slate-400 font-medium transition-all duration-300"
+                  className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-orange-600 data-[state=active]:shadow-sm text-slate-500 font-medium transition-all duration-300"
                 >
                   Sign Up
                 </TabsTrigger>
@@ -236,35 +178,35 @@ export default function Auth() {
                 <TabsContent key="login" value="login" className="mt-0 focus-visible:outline-none">
                   <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}>
                     <div className="mb-6">
-                      <h2 className="text-3xl font-bold text-white mb-2">Welcome back</h2>
-                      <p className="text-slate-400">Enter your credentials to decrypt your vault.</p>
+                      <h2 className="text-3xl font-bold text-slate-900 mb-2">Welcome back</h2>
+                      <p className="text-slate-500">Enter your credentials to decrypt your vault.</p>
                     </div>
                     <form onSubmit={handleLogin} className="space-y-5">
                       <div className="space-y-2 group">
-                        <Label htmlFor="email" className="text-slate-300 transition-colors group-focus-within:text-orange-400">Email Address</Label>
+                        <Label htmlFor="email" className="text-slate-600 transition-colors group-focus-within:text-orange-600">Email Address</Label>
                         <Input
                           id="email" type="email" placeholder="name@company.com" required
-                          className="bg-slate-950/50 border-white/10 text-slate-100 placeholder:text-slate-600 focus:border-orange-500 focus:ring-orange-500/20 rounded-lg h-11 transition-all duration-300"
+                          className="bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-orange-500 focus:ring-orange-500/20 rounded-lg h-11 transition-all duration-300"
                           value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)}
                         />
                       </div>
                       <div className="space-y-2 group">
                         <div className="flex justify-between items-center">
-                          <Label htmlFor="password" className="text-slate-300 transition-colors group-focus-within:text-orange-400">Password</Label>
-                          <a href="/forgot-password" className="text-sm text-orange-500 hover:text-orange-400 hover:underline">Forgot?</a>
+                          <Label htmlFor="password" className="text-slate-600 transition-colors group-focus-within:text-orange-600">Password</Label>
+                          <a href="/forgot-password" className="text-sm text-orange-600 hover:text-orange-500 hover:underline">Forgot?</a>
                         </div>
                         <div className="relative">
                           <Input
                             id="password" type={showPassword ? "text" : "password"} placeholder="••••••••" required
-                            className="bg-slate-950/50 border-white/10 text-slate-100 placeholder:text-slate-600 focus:border-orange-500 focus:ring-orange-500/20 rounded-lg h-11 pr-10 transition-all duration-300"
+                            className="bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-orange-500 focus:ring-orange-500/20 rounded-lg h-11 pr-10 transition-all duration-300"
                             value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)}
                           />
-                          <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-orange-400 transition-colors">
+                          <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-orange-600 transition-colors">
                             {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                           </button>
                         </div>
                       </div>
-                      <Button type="submit" className="w-full relative overflow-hidden bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-400 hover:to-red-500 text-white font-bold h-12 rounded-xl shadow-[0_0_20px_rgba(249,115,22,0.3)] hover:shadow-[0_0_30px_rgba(249,115,22,0.5)] transition-all duration-300 hover:scale-[1.02] group" disabled={isLoading}>
+                      <Button type="submit" className="w-full relative overflow-hidden bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-400 hover:to-red-500 text-white font-bold h-12 rounded-xl shadow-lg shadow-orange-500/30 transition-all duration-300 hover:scale-[1.02] group" disabled={isLoading}>
                         <span className="relative z-10 flex items-center justify-center gap-2">
                             {isLoading ? "Authenticating..." : <>Access Dashboard <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" /></>}
                         </span>
@@ -276,35 +218,35 @@ export default function Auth() {
                 <TabsContent key="signup" value="signup" className="mt-0 focus-visible:outline-none">
                   <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}>
                     <div className="mb-6">
-                      <h2 className="text-3xl font-bold text-white mb-2">Initialize Account</h2>
-                      <p className="text-slate-400">Secure your digital workspace in seconds.</p>
+                      <h2 className="text-3xl font-bold text-slate-900 mb-2">Initialize Account</h2>
+                      <p className="text-slate-500">Secure your digital workspace in seconds.</p>
                     </div>
                     <form onSubmit={handleSignup} className="space-y-4">
                       <div className="space-y-2 group">
-                        <Label htmlFor="fullname" className="text-slate-300 group-focus-within:text-red-400 transition-colors">Full Name</Label>
+                        <Label htmlFor="fullname" className="text-slate-600 group-focus-within:text-red-500 transition-colors">Full Name</Label>
                         <Input
                           id="fullname" placeholder="John Doe" required
-                          className="bg-slate-950/50 border-white/10 text-slate-100 placeholder:text-slate-600 focus:border-red-500 focus:ring-red-500/20 rounded-lg h-11 transition-all duration-300"
+                          className="bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-red-500 focus:ring-red-500/20 rounded-lg h-11 transition-all duration-300"
                           value={signupName} onChange={(e) => setSignupName(e.target.value)}
                         />
                       </div>
                       <div className="space-y-2 group">
-                        <Label htmlFor="signup-email" className="text-slate-300 group-focus-within:text-red-400 transition-colors">Email Address</Label>
+                        <Label htmlFor="signup-email" className="text-slate-600 group-focus-within:text-red-500 transition-colors">Email Address</Label>
                         <Input
                           id="signup-email" type="email" placeholder="name@company.com" required
-                          className="bg-slate-950/50 border-white/10 text-slate-100 placeholder:text-slate-600 focus:border-red-500 focus:ring-red-500/20 rounded-lg h-11 transition-all duration-300"
+                          className="bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-red-500 focus:ring-red-500/20 rounded-lg h-11 transition-all duration-300"
                           value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)}
                         />
                       </div>
                       <div className="space-y-2 group">
-                        <Label htmlFor="signup-password" className="text-slate-300 group-focus-within:text-red-400 transition-colors">Password</Label>
+                        <Label htmlFor="signup-password" className="text-slate-600 group-focus-within:text-red-500 transition-colors">Password</Label>
                         <Input
                           id="signup-password" type="password" placeholder="Create a strong password" required
-                          className="bg-slate-950/50 border-white/10 text-slate-100 placeholder:text-slate-600 focus:border-red-500 focus:ring-red-500/20 rounded-lg h-11 transition-all duration-300"
+                          className="bg-white border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-red-500 focus:ring-red-500/20 rounded-lg h-11 transition-all duration-300"
                           value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)}
                         />
                       </div>
-                      <Button type="submit" className="w-full bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white font-bold h-12 rounded-xl shadow-[0_0_20px_rgba(220,38,38,0.3)] hover:shadow-[0_0_30px_rgba(220,38,38,0.5)] transition-all duration-300 hover:scale-[1.02] group" disabled={isLoading}>
+                      <Button type="submit" className="w-full bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white font-bold h-12 rounded-xl shadow-lg shadow-red-500/30 transition-all duration-300 hover:scale-[1.02] group" disabled={isLoading}>
                         <span className="flex items-center justify-center gap-2">
                             {isLoading ? "Processing..." : <>Create Secure Account <CheckCircle2 size={18} className="opacity-0 group-hover:opacity-100 transition-opacity" /></>}
                         </span>
@@ -316,8 +258,8 @@ export default function Auth() {
             </Tabs>
           </motion.div>
 
-          {/* === Right Column: Holographic Showcase === */}
-          <div className="relative hidden lg:flex flex-col items-center justify-center p-12 overflow-hidden bg-slate-950">
+          {/* === Right Column: Holographic Showcase (Kept Dark for Visual Impact) === */}
+          <div className="relative hidden lg:flex flex-col items-center justify-center p-12 overflow-hidden bg-slate-900">
             <div className="absolute inset-0 opacity-20">
                  <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
             </div>

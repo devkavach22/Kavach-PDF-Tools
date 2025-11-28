@@ -13,7 +13,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { motion } from "framer-motion";
 
-// Define state for permissions
 type Permissions = {
   printing: boolean;
   copying: boolean;
@@ -39,8 +38,6 @@ export default function LockPDF() {
   });
 
   const { toast } = useToast();
-
-  // Auth placeholders
   const isAuthenticated = true;
   const isAdmin = false;
 
@@ -80,38 +77,25 @@ export default function LockPDF() {
       toast({ title: "Error", description: "An Owner Password is required to set permissions", variant: "destructive" });
       return;
     }
-
-    toast({
-      title: "Protecting PDF",
-      description: "Your file is being encrypted and locked...",
-    });
-    
-    console.log({
-      file: file.name,
-      userPassword,
-      ownerPassword,
-      permissions,
-      encryption,
-      outputFilename,
-    });
+    toast({ title: "Protecting PDF", description: "Your file is being encrypted and locked..." });
   };
   
   const PasswordInput = ({ id, label, value, onChange, show, onToggle }: any) => (
     <div className="space-y-2">
-      <Label htmlFor={id} className="text-slate-200">{label}</Label>
+      <Label htmlFor={id} className="text-slate-700">{label}</Label>
       <div className="relative">
         <Input
           id={id}
           type={show ? "text" : "password"}
           value={value}
           onChange={onChange}
-          className="pr-10 bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500 focus:border-orange-500/50"
+          className="pr-10 bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-orange-500 focus:ring-orange-200"
         />
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="absolute right-1 top-1 h-7 w-7 text-slate-400 hover:text-orange-400 hover:bg-transparent"
+          className="absolute right-1 top-1 h-7 w-7 text-slate-400 hover:text-orange-500 hover:bg-transparent"
           onClick={onToggle}
         >
           {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -121,14 +105,14 @@ export default function LockPDF() {
   );
 
   return (
-    <div className="relative flex flex-col min-h-screen bg-[#0f172a] font-sans text-slate-50 selection:bg-orange-500/30 selection:text-orange-200 overflow-x-hidden">
+    <div className="relative flex flex-col min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-orange-100 selection:text-orange-900 overflow-x-hidden">
       
       {/* --- AMBIENT BACKGROUND --- */}
       <div className="fixed inset-0 z-0 pointer-events-none">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-[#0f172a] to-black" />
-        <motion.div animate={{ opacity: [0.4, 0.6, 0.4], scale: [1, 1.1, 1], rotate: [0, 5, 0] }} transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }} className="absolute -top-[20%] left-[10%] w-[60vw] h-[60vw] bg-orange-600/10 rounded-full blur-[120px]" />
-        <motion.div animate={{ opacity: [0.3, 0.5, 0.3], scale: [1, 1.2, 1], rotate: [0, -5, 0] }} transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }} className="absolute -bottom-[10%] right-[0%] w-[50vw] h-[50vw] bg-red-600/10 rounded-full blur-[100px]" />
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white via-slate-50 to-slate-100" />
+        <motion.div animate={{ opacity: [0.4, 0.6, 0.4], scale: [1, 1.1, 1], rotate: [0, 5, 0] }} transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }} className="absolute -top-[20%] left-[10%] w-[60vw] h-[60vw] bg-orange-200/40 rounded-full blur-[120px]" />
+        <motion.div animate={{ opacity: [0.3, 0.5, 0.3], scale: [1, 1.2, 1], rotate: [0, -5, 0] }} transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }} className="absolute -bottom-[10%] right-[0%] w-[50vw] h-[50vw] bg-red-200/40 rounded-full blur-[100px]" />
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-multiply" />
       </div>
 
       <div className="relative z-10 flex flex-col min-h-screen">
@@ -139,10 +123,10 @@ export default function LockPDF() {
           
             <Link
               to="/tools"
-              className="inline-flex items-center bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white gap-2 text-sm font-medium hover:bg-white/10 transition-colors"
+              className="inline-flex items-center bg-white border border-slate-200 rounded-lg px-4 py-2 text-slate-700 gap-2 text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm"
             >
-              <ArrowLeft className="h-4 w-4 text-slate-400" />
-              <span className="text-slate-300">Back to Tools</span>
+              <ArrowLeft className="h-4 w-4 text-slate-500" />
+              <span className="text-slate-600">Back to Tools</span>
             </Link>
 
             {/* === CONDITIONAL UI: SHOW UPLOAD OR EDITOR === */}
@@ -150,32 +134,32 @@ export default function LockPDF() {
               /* === UPLOAD UI === */
               <div className="space-y-12">
                 <div className="text-center space-y-3">
-                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-500/20 border border-orange-500/30 animate-float">
-                    <Lock className="h-8 w-8 text-orange-400" />
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-100 border border-orange-200 animate-float">
+                    <Lock className="h-8 w-8 text-orange-500" />
                   </div>
                   <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-red-500 to-amber-500 animate-gradient-x">
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 via-red-500 to-amber-500 animate-gradient-x">
                       Protect PDF File
                     </span>
                   </h1>
-                  <p className="text-lg text-slate-400 max-w-xl mx-auto">
+                  <p className="text-lg text-slate-500 max-w-xl mx-auto">
                     Encrypt and add passwords or permissions to your PDF
                   </p>
                 </div>
 
-                <Card className="bg-slate-900/40 backdrop-blur-md shadow-xl border border-white/10 max-w-3xl mx-auto">
+                <Card className="bg-white/80 backdrop-blur-md shadow-xl border border-slate-200 max-w-3xl mx-auto">
                   <CardHeader>
-                    <CardTitle className="text-white">Upload PDF File</CardTitle>
-                    <CardDescription className="text-slate-400">
+                    <CardTitle className="text-slate-900">Upload PDF File</CardTitle>
+                    <CardDescription className="text-slate-500">
                       Select a single PDF file to protect
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    <div className="border-2 border-dashed rounded-xl p-12 text-center border-slate-700 hover:border-orange-500/50 transition-colors bg-slate-900/50">
-                      <Upload className="mx-auto h-12 w-12 text-slate-500 mb-4" />
+                    <div className="border-2 border-dashed rounded-xl p-12 text-center border-slate-300 hover:border-orange-500 transition-colors bg-slate-50">
+                      <Upload className="mx-auto h-12 w-12 text-slate-400 mb-4" />
                       <label htmlFor="file-upload" className="cursor-pointer">
-                        <span className="text-orange-400 font-semibold hover:text-orange-300 transition-colors">Choose file</span>
-                        {" "}<span className="text-slate-400">or drag and drop</span>
+                        <span className="text-orange-600 font-semibold hover:text-orange-500 transition-colors">Choose file</span>
+                        {" "}<span className="text-slate-500">or drag and drop</span>
                         <input
                           id="file-upload"
                           type="file"
@@ -195,36 +179,36 @@ export default function LockPDF() {
                 
                 {/* === Main Content (Left) === */}
                 <div className="flex-1 space-y-4">
-                  <Card className="bg-slate-900/40 backdrop-blur-md shadow-xl border border-white/10">
+                  <Card className="bg-white/80 backdrop-blur-md shadow-xl border border-slate-200">
                     <CardContent className="p-4 flex justify-between items-center">
                       <div className="flex items-center gap-3">
-                        <div className="p-2 bg-orange-500/10 rounded-lg">
-                          <FileText className="h-5 w-5 text-orange-400" />
+                        <div className="p-2 bg-orange-100 rounded-lg">
+                          <FileText className="h-5 w-5 text-orange-500" />
                         </div>
-                        <span className="font-medium text-slate-200">{file.name}</span>
+                        <span className="font-medium text-slate-800">{file.name}</span>
                       </div>
-                      <Button variant="ghost" size="icon" onClick={removeFile} className="text-slate-400 hover:text-red-400 hover:bg-red-400/10">
+                      <Button variant="ghost" size="icon" onClick={removeFile} className="text-slate-400 hover:text-red-500 hover:bg-red-50">
                         <X className="h-4 w-4" />
                       </Button>
                     </CardContent>
                   </Card>
                   
                   {/* Placeholder for PDF preview */}
-                  <div className="w-full h-[600px] bg-slate-900/50 rounded-xl border border-slate-800 flex items-center justify-center">
-                    <p className="text-slate-500">PDF Preview Area</p>
+                  <div className="w-full h-[600px] bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center">
+                    <p className="text-slate-400">PDF Preview Area</p>
                   </div>
                 </div>
 
                 {/* === Sidebar (Right) === */}
-                <Card className="w-full lg:w-96 bg-slate-900/40 backdrop-blur-md shadow-xl border border-white/10 h-fit">
+                <Card className="w-full lg:w-96 bg-white/90 backdrop-blur-md shadow-xl border border-slate-200 h-fit">
                   <CardHeader>
-                    <CardTitle className="text-white">Protection Settings</CardTitle>
+                    <CardTitle className="text-slate-900">Protection Settings</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     
                     {/* === Password Settings === */}
                     <div className="space-y-4">
-                      <h3 className="font-semibold text-orange-400">Password Settings</h3>
+                      <h3 className="font-semibold text-orange-600">Password Settings</h3>
                       <PasswordInput
                         id="user-password"
                         label="User Password (open)"
@@ -246,11 +230,11 @@ export default function LockPDF() {
                       </p>
                     </div>
 
-                    <Separator className="bg-white/10" />
+                    <Separator className="bg-slate-200" />
 
                     {/* === Permissions === */}
                     <div className="space-y-3">
-                      <h3 className="font-semibold text-orange-400">Permissions</h3>
+                      <h3 className="font-semibold text-orange-600">Permissions</h3>
                       <div className="grid grid-cols-1 gap-3">
                         {(Object.keys(permissions) as Array<keyof Permissions>).map((perm) => (
                           <div key={perm} className="flex items-center space-x-3">
@@ -259,9 +243,9 @@ export default function LockPDF() {
                               checked={permissions[perm]}
                               onCheckedChange={() => handlePermissionChange(perm)}
                               disabled={!ownerPassword}
-                              className="border-slate-600 data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500"
+                              className="border-slate-400 data-[state=checked]:bg-orange-600 data-[state=checked]:border-orange-600"
                             />
-                            <Label htmlFor={perm} className="capitalize text-sm font-normal text-slate-300 cursor-pointer">
+                            <Label htmlFor={perm} className="capitalize text-sm font-normal text-slate-700 cursor-pointer">
                               Allow {perm}
                             </Label>
                           </div>
@@ -269,17 +253,17 @@ export default function LockPDF() {
                       </div>
                     </div>
 
-                    <Separator className="bg-white/10" />
+                    <Separator className="bg-slate-200" />
 
                     {/* === Encryption & Output === */}
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="encryption-type" className="text-slate-200">Encryption Type</Label>
+                        <Label htmlFor="encryption-type" className="text-slate-700">Encryption Type</Label>
                         <Select value={encryption} onValueChange={setEncryption}>
-                          <SelectTrigger id="encryption-type" className="bg-slate-900/50 border-slate-700 text-white">
+                          <SelectTrigger id="encryption-type" className="bg-white border-slate-300 text-slate-900">
                             <SelectValue placeholder="Select encryption" />
                           </SelectTrigger>
-                          <SelectContent className="bg-slate-900 border-slate-800 text-white">
+                          <SelectContent className="bg-white border-slate-200 text-slate-900">
                             <SelectItem value="AES-128">AES-128</SelectItem>
                             <SelectItem value="AES-256">AES-256 (Recommended)</SelectItem>
                           </SelectContent>
@@ -287,12 +271,12 @@ export default function LockPDF() {
                       </div>
                       
                       <div className="space-y-2">
-                        <Label htmlFor="output-filename" className="text-slate-200">Output Filename</Label>
+                        <Label htmlFor="output-filename" className="text-slate-700">Output Filename</Label>
                         <Input
                           id="output-filename"
                           value={outputFilename}
                           onChange={(e) => setOutputFilename(e.target.value)}
-                          className="bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500"
+                          className="bg-white border-slate-300 text-slate-900 placeholder:text-slate-400"
                         />
                       </div>
                     </div>
@@ -302,14 +286,14 @@ export default function LockPDF() {
                     <Button 
                       onClick={handleLockPDF} 
                       disabled={!file || !ownerPassword}
-                      className="w-full bg-orange-600 hover:bg-orange-700 text-lg py-6 rounded-xl font-semibold transition-colors"
+                      className="w-full bg-orange-600 hover:bg-orange-700 text-lg py-6 rounded-xl font-semibold transition-colors text-white"
                     >
                       <Lock className="mr-2 h-5 w-5" />
                       Lock PDF
                     </Button>
                     <Button 
                       variant="outline" 
-                      className="w-full bg-transparent border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white"
+                      className="w-full bg-transparent border-slate-300 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                       disabled={true}
                     >
                       <Download className="mr-2 h-5 w-5" />

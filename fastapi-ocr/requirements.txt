@@ -1,12 +1,23 @@
 fastapi==0.95.2
 uvicorn[standard]==0.22.0
 
-easyocr==1.7.1
-pillow>=10.0.0
-
-numpy==1.23.5
-
+# Machine Learning & OCR
 torch==2.0.1
 torchvision==0.15.2
+easyocr==1.7.1
+numpy==1.26.4
+pillow==10.4.0
 
-python-multipart
+# PDF & Document Processing
+pdf2image==1.17.0
+pdfplumber==0.11.2
+mammoth==1.4.19
+
+# FastAPI File Upload Support
+python-multipart==0.0.9
+
+# Extra useful libraries
+opencv-python==4.9.0.80
+scikit-image==0.22.0
+python-dotenv==1.0.1
+requests==2.32.3

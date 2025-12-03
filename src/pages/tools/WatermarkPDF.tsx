@@ -1,58 +1,175 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import Instance from "@/lib/axiosInstance";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Upload, Download, ArrowLeft, X, FileText, Image, Type, Bold, Italic, Underline } from "lucide-react";
+import { Upload, Download, ArrowLeft, X, FileText, Image as ImageIcon, Type, Loader2, CheckCircle, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Checkbox } from "@/components/ui/checkbox";
 import { motion } from "framer-motion";
 
-type Position = 'top-left' | 'top-center' | 'top-right' | 'middle-left' | 'middle-center' | 'middle-right' | 'bottom-left' | 'bottom-center' | 'bottom-right';
+interface WatermarkedFileResponse {
+  originalName: string;
+  outputFile: string;
+  message: string;
+}
+
+const STORAGE_KEY = "kavach_watermarked_file";
 
 export default function WatermarkPDF() {
   const [file, setFile] = useState<File | null>(null);
-  const [watermarkText, setWatermarkText] = useState("");
-  const [watermarkImage, setWatermarkImage] = useState<File | null>(null);
-  const [activeTab, setActiveTab] = useState("text");
-  const [position, setPosition] = useState<Position>('middle-center');
-  const [isMosaic, setIsMosaic] = useState(false);
-  const [transparency, setTransparency] = useState("1");
-  const [rotation, setRotation] = useState("0");
-  const [pageFrom, setPageFrom] = useState(1);
-  const [pageTo, setPageTo] = useState(10);
-  const [layer, setLayer] = useState("over");
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  
+  // Configuration States
+  const [activeTab, setActiveTab] = useState("text"); // 'text' or 'image'
+  const [watermarkText, setWatermarkText] = useState("KAVACH");
+  const [rotation, setRotation] = useState("-45");
+  const [pages, setPages] = useState("all");
+  
+  // Processing States
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [watermarkedFile, setWatermarkedFile] = useState<WatermarkedFileResponse | null>(null);
+  
   const { toast } = useToast();
   const isAuthenticated = true;
   const isAdmin = false;
 
+  // Cleanup preview URL on unmount or file change
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
-      toast({ title: "File uploaded", description: `${e.target.files[0].name} ready` });
+      const selectedFile = e.target.files[0];
+      setFile(selectedFile);
+      setWatermarkedFile(null);
+      
+      // Create object URL for preview
+      const objectUrl = URL.createObjectURL(selectedFile);
+      setPreviewUrl(objectUrl);
+
+      toast({ 
+        title: "File uploaded", 
+        description: `${selectedFile.name} ready to watermark` 
+      });
     }
   };
 
-  const handleWatermark = () => {
-    if (!file) { toast({ title: "Error", variant: "destructive" }); return; }
-    toast({ title: "Watermarking PDF", description: "Processing..." });
+  const handleWatermark = async () => {
+    if (!file) { 
+      toast({ title: "Error", description: "Please upload a PDF first.", variant: "destructive" }); 
+      return; 
+    }
+
+    setIsProcessing(true);
+    const token = localStorage.getItem("authToken");
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      // Construct Config JSON string matching Postman snippet
+      // Example: '{ "type": "text", "text": "KAVACH", "pages": "all", "rotation": -45 }'
+      const configObj = {
+        type: activeTab, // "text" or "image" (Note: backend needs to support image type logic if selected)
+        text: activeTab === 'text' ? watermarkText : "",
+        pages: pages,
+        rotation: parseInt(rotation)
+      };
+
+      formData.append('config', JSON.stringify(configObj));
+
+      // If image watermark is implemented in backend, you would append it here:
+      // if (activeTab === 'image' && watermarkImage) formData.append('watermarkImage', watermarkImage);
+
+      const response = await Instance.post('/pdf/watermark-pdf', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'Authorization': token ? `${token}` : '',
+        }
+      });
+
+      // Assuming backend returns { files: [ { outputFile: "..." } ] } similar to compress endpoint
+      // Adjust this based on exact response structure. 
+      // Based on snippet, it likely returns the file details directly or in a 'data' wrapper.
+      if (response.data) {
+        // Mocking the response structure based on CompressPDF pattern
+        // You might need to adjust 'response.data.files[0]' depending on exact API return
+        const resultData = response.data.files ? response.data.files[0] : response.data;
+        
+        setWatermarkedFile({
+          originalName: file.name,
+          outputFile: resultData.outputFile || resultData.filename, // Fallback depending on API key
+          message: "Watermark applied successfully"
+        });
+        
+        toast({ title: "Success!", description: "Watermark added to PDF." });
+      }
+
+    } catch (error) {
+      console.error("Watermark Error:", error);
+      toast({ 
+        title: "Processing Failed", 
+        description: "Could not watermark the PDF. Please try again.", 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  const PositionGrid = () => (
-    <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100 rounded-lg border border-slate-200 w-fit">
-      {(['top-left', 'top-center', 'top-right', 'middle-left', 'middle-center', 'middle-right', 'bottom-left', 'bottom-center', 'bottom-right'] as Position[]).map((pos) => (
-        <Button key={pos} variant="ghost" size="icon" className={`h-9 w-9 rounded-md hover:bg-slate-200 ${position === pos ? 'bg-orange-600 hover:bg-orange-700' : ''}`} onClick={() => setPosition(pos)}>
-          <div className={`h-3 w-3 rounded-full ${position === pos ? 'bg-white' : 'bg-slate-400'}`} />
-        </Button>
-      ))}
-    </div>
-  );
+  const handleDownload = async () => {
+    if (!watermarkedFile || !watermarkedFile.outputFile) return;
+
+    const rawPath = watermarkedFile.outputFile;
+    const filenameToDownload = rawPath.split(/[/\\]/).pop(); // Extract filename
+
+    if (!filenameToDownload) {
+      toast({ title: "Error", description: "Invalid filename", variant: "destructive" });
+      return;
+    }
+
+    const token = localStorage.getItem("authToken");
+
+    try {
+      toast({ title: "Download Started", description: "Fetching your file..." });
+
+      const response = await Instance.get(`/pdf/download/${filenameToDownload}`, {
+        headers: { 'Authorization': token ? `${token}` : '' },
+        responseType: 'blob',
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `watermarked_${filenameToDownload}`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast({ title: "Download Complete", description: "File saved to your device." });
+    } catch (error) {
+      console.error("Download Error:", error);
+      toast({ title: "Download Failed", description: "Could not download the file.", variant: "destructive" });
+    }
+  };
+
+  const handleReset = () => {
+    setFile(null);
+    setPreviewUrl(null);
+    setWatermarkedFile(null);
+    const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+    if (fileInput) fileInput.value = '';
+  };
 
   return (
     <div className="relative flex flex-col min-h-screen bg-gray-50 font-sans text-slate-900 overflow-x-hidden">
@@ -63,65 +180,186 @@ export default function WatermarkPDF() {
 
       <div className="relative z-10 flex flex-col min-h-screen">
         <Header isAuthenticated={isAuthenticated} isAdmin={isAdmin} onLogout={() => console.log("Logout")} />
+        
         <main className="flex-1 py-16">
           <div className="max-w-7xl mx-auto space-y-6 px-4 sm:px-6 lg:px-8">
             <Link to="/tools" className="inline-flex items-center bg-white border border-slate-200 rounded-lg px-4 py-2 text-slate-700 gap-2 text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm">
-              <ArrowLeft className="h-4 w-4 text-slate-500" /><span className="text-slate-600">Back</span>
+              <ArrowLeft className="h-4 w-4 text-slate-500" /><span className="text-slate-600">Back to Tools</span>
             </Link>
 
-            {!file ? (
-               <div className="space-y-8">
-                 <div className="text-center space-y-3">
-                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-100 border border-orange-200 animate-float"><Download className="h-8 w-8 text-orange-600" /></div>
-                    <h1 className="text-4xl font-bold text-slate-900">Watermark PDF</h1>
-                    <p className="text-lg text-slate-500">Add a text or image watermark to your PDF file</p>
-                 </div>
+            <div className="text-center space-y-3 mb-8">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-100 border border-orange-200 animate-float">
+                <FileText className="h-8 w-8 text-orange-600" />
+              </div>
+              <h1 className="text-4xl font-bold text-slate-900">Watermark PDF</h1>
+              <p className="text-lg text-slate-500">Secure your document with text or image overlays</p>
+            </div>
+
+            {/* Success View */}
+            {watermarkedFile ? (
+               <Card className="max-w-2xl mx-auto bg-emerald-50 backdrop-blur-md shadow-xl border border-emerald-200 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-500 to-emerald-400" />
+                <CardHeader>
+                  <div className="flex items-center gap-3 mb-2">
+                    <CheckCircle className="h-6 w-6 text-emerald-600" />
+                    <CardTitle className="text-emerald-900">Watermark Applied!</CardTitle>
+                  </div>
+                  <CardDescription className="text-emerald-700">
+                    Your document is ready for download.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                   <div className="flex flex-col sm:flex-row gap-4">
+                      <Button onClick={handleDownload} className="flex-1 bg-green-600 hover:bg-green-700 text-white py-6 rounded-xl font-semibold shadow-lg shadow-green-900/10">
+                         <Download className="mr-2 h-5 w-5" />
+                         Download PDF
+                      </Button>
+                      <Button variant="outline" onClick={handleReset} className="bg-white border-slate-300 text-slate-700 hover:bg-slate-100 py-6 rounded-xl">
+                         <RefreshCw className="mr-2 h-4 w-4" />
+                         Start Over
+                      </Button>
+                   </div>
+                </CardContent>
+              </Card>
+            ) : (
+              // Upload & Config View
+              !file ? (
                  <Card className="bg-white shadow-xl border border-slate-200 max-w-4xl mx-auto">
-                    <CardHeader><CardTitle className="text-slate-900">Upload PDF File</CardTitle><CardDescription className="text-slate-500">Select a single PDF file</CardDescription></CardHeader>
+                    <CardHeader>
+                      <CardTitle className="text-slate-900">Upload PDF File</CardTitle>
+                      <CardDescription className="text-slate-500">Select a PDF to add a watermark</CardDescription>
+                    </CardHeader>
                     <CardContent>
                       <div className="border-2 border-dashed rounded-xl p-12 text-center border-slate-300 hover:border-orange-500/50 transition-colors bg-slate-50/50">
                         <Upload className="mx-auto h-12 w-12 text-slate-400 mb-4" />
-                        <label htmlFor="file-upload" className="cursor-pointer"><span className="text-orange-600 font-semibold hover:text-orange-500">Choose file</span> <span className="text-slate-500">or drag and drop</span><input id="file-upload" type="file" accept=".pdf" className="hidden" onChange={handleFileSelect} /></label>
+                        <label htmlFor="file-upload" className="cursor-pointer">
+                          <span className="text-orange-600 font-semibold hover:text-orange-500">Choose file</span> 
+                          <span className="text-slate-500"> or drag and drop</span>
+                          <input id="file-upload" type="file" accept=".pdf" className="hidden" onChange={handleFileSelect} />
+                        </label>
                       </div>
                     </CardContent>
                  </Card>
-               </div>
-            ) : (
-              <div className="flex flex-col lg:flex-row gap-8">
-                <div className="flex-1 space-y-4">
-                  <Card className="bg-white shadow-xl border border-slate-200">
-                    <CardContent className="p-4 flex justify-between items-center"><div className="flex items-center gap-2"><FileText className="h-5 w-5 text-orange-600" /><span className="font-medium text-slate-900">{file.name}</span></div><Button variant="ghost" size="icon" onClick={() => setFile(null)} className="text-slate-400 hover:text-red-500"><X className="h-4 w-4" /></Button></CardContent>
-                  </Card>
-                  <div className="w-full h-[600px] bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center"><p className="text-slate-400">PDF Page Previews</p></div>
-                </div>
+              ) : (
+                <div className="flex flex-col lg:flex-row gap-8">
+                  {/* Left Column: Preview */}
+                  <div className="flex-1 space-y-4">
+                    <Card className="bg-white shadow-xl border border-slate-200">
+                      <CardContent className="p-4 flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-5 w-5 text-orange-600" />
+                          <span className="font-medium text-slate-900">{file.name}</span>
+                        </div>
+                        <Button variant="ghost" size="icon" onClick={() => { setFile(null); setPreviewUrl(null); }} className="text-slate-400 hover:text-red-500">
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </CardContent>
+                    </Card>
+                    
+                    {/* Native PDF Preview */}
+                    <div className="w-full h-[600px] bg-slate-100 rounded-xl border border-slate-200 overflow-hidden shadow-inner relative">
+                      {previewUrl ? (
+                         <object data={previewUrl} type="application/pdf" width="100%" height="100%" className="w-full h-full">
+                           <div className="flex flex-col items-center justify-center h-full text-slate-400">
+                              <p>PDF Preview not supported in this browser.</p>
+                           </div>
+                         </object>
+                      ) : (
+                        <div className="flex items-center justify-center h-full text-slate-400">
+                          Loading Preview...
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
-                <Card className="w-full lg:w-96 bg-white shadow-xl border border-slate-200 h-fit">
-                  <CardHeader><CardTitle className="text-slate-900">Watermark options</CardTitle></CardHeader>
-                  <CardContent className="space-y-4">
-                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                      <TabsList className="grid w-full grid-cols-2 bg-slate-100 text-slate-600">
-                        <TabsTrigger value="text" className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm"><Type className="h-4 w-4 mr-2" />Text</TabsTrigger>
-                        <TabsTrigger value="image" className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm"><Image className="h-4 w-4 mr-2" />Image</TabsTrigger>
-                      </TabsList>
-                      
-                      <TabsContent value="text" className="space-y-4 pt-4">
-                        <div className="space-y-2"><Label className="text-slate-700">Text</Label><Input placeholder="iLovePDF" value={watermarkText} onChange={(e) => setWatermarkText(e.target.value)} className="bg-white border-slate-300 text-slate-900" /></div>
-                        <div className="space-y-2"><Label className="text-slate-700">Format</Label><ToggleGroup type="multiple" className="justify-start"><ToggleGroupItem value="bold" className="text-slate-600 data-[state=on]:bg-slate-200 data-[state=on]:text-slate-900"><Bold className="h-4 w-4" /></ToggleGroupItem><ToggleGroupItem value="italic" className="text-slate-600 data-[state=on]:bg-slate-200 data-[state=on]:text-slate-900"><Italic className="h-4 w-4" /></ToggleGroupItem><ToggleGroupItem value="underline" className="text-slate-600 data-[state=on]:bg-slate-200 data-[state=on]:text-slate-900"><Underline className="h-4 w-4" /></ToggleGroupItem></ToggleGroup></div>
-                        <div className="space-y-2"><Label className="text-slate-700">Position</Label><PositionGrid /><div className="flex items-center space-x-2 pt-2"><Checkbox id="mosaic-text" checked={isMosaic} onCheckedChange={(c) => setIsMosaic(c === true)} className="border-slate-400 data-[state=checked]:bg-orange-600 data-[state=checked]:border-orange-600" /><Label htmlFor="mosaic-text" className="text-slate-700">Mosaic</Label></div></div>
-                      </TabsContent>
-                      
-                      <TabsContent value="image" className="space-y-4 pt-4">
-                        <Button asChild variant="outline" className="w-full border-slate-300 text-slate-700 hover:bg-slate-50"><label className="cursor-pointer"><Image className="h-4 w-4 mr-2" /> Upload Image <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files && setWatermarkImage(e.target.files[0])} /></label></Button>
-                        {watermarkImage && <p className="text-xs text-slate-500">Selected: {watermarkImage.name}</p>}
-                        <div className="space-y-2"><Label className="text-slate-700">Position</Label><PositionGrid /><div className="flex items-center space-x-2 pt-2"><Checkbox id="mosaic-img" checked={isMosaic} onCheckedChange={(c) => setIsMosaic(c === true)} className="border-slate-400 data-[state=checked]:bg-orange-600 data-[state=checked]:border-orange-600" /><Label htmlFor="mosaic-img" className="text-slate-700">Mosaic</Label></div></div>
-                        <div className="space-y-2"><Label className="text-slate-700">Transparency</Label><Select value={transparency} onValueChange={setTransparency}><SelectTrigger className="bg-white border-slate-300 text-slate-900"><SelectValue /></SelectTrigger><SelectContent className="bg-white border-slate-200 text-slate-900"><SelectItem value="1">No transparency</SelectItem><SelectItem value="0.5">50%</SelectItem></SelectContent></Select></div>
-                        <div className="space-y-2"><Label className="text-slate-700">Rotation</Label><Select value={rotation} onValueChange={setRotation}><SelectTrigger className="bg-white border-slate-300 text-slate-900"><SelectValue /></SelectTrigger><SelectContent className="bg-white border-slate-200 text-slate-900"><SelectItem value="0">Do not rotate</SelectItem><SelectItem value="45">45°</SelectItem></SelectContent></Select></div>
-                      </TabsContent>
-                    </Tabs>
-                  </CardContent>
-                  <CardFooter><Button onClick={handleWatermark} disabled={!file} className="w-full bg-orange-600 hover:bg-orange-700 text-white text-lg py-6 rounded-xl font-semibold shadow-lg shadow-orange-500/20"><Download className="mr-2 h-5 w-5" /> Add watermark</Button></CardFooter>
-                </Card>
-              </div>
+                  {/* Right Column: Controls */}
+                  <Card className="w-full lg:w-96 bg-white shadow-xl border border-slate-200 h-fit">
+                    <CardHeader>
+                      <CardTitle className="text-slate-900">Watermark Options</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                        <TabsList className="grid w-full grid-cols-2 bg-slate-100 text-slate-600 mb-4">
+                          <TabsTrigger value="text" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                            <Type className="h-4 w-4 mr-2" />Text
+                          </TabsTrigger>
+                          <TabsTrigger value="image" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                            <ImageIcon className="h-4 w-4 mr-2" />Image
+                          </TabsTrigger>
+                        </TabsList>
+                        
+                        <TabsContent value="text" className="space-y-4">
+                          <div className="space-y-2">
+                            <Label className="text-slate-700">Watermark Text</Label>
+                            <Input 
+                              placeholder="KAVACH" 
+                              value={watermarkText} 
+                              onChange={(e) => setWatermarkText(e.target.value)} 
+                              className="bg-white border-slate-300 text-slate-900" 
+                            />
+                          </div>
+                        </TabsContent>
+                        
+                        <TabsContent value="image" className="space-y-4">
+                          <div className="p-4 bg-yellow-50 text-yellow-800 text-sm rounded-lg border border-yellow-200">
+                            Image watermark functionality coming soon.
+                          </div>
+                        </TabsContent>
+                      </Tabs>
+
+                      {/* Common Options */}
+                      <div className="space-y-4 border-t pt-4 border-slate-100">
+                        <div className="space-y-2">
+                          <Label className="text-slate-700">Rotation</Label>
+                          <Select value={rotation} onValueChange={setRotation}>
+                            <SelectTrigger className="bg-white border-slate-300">
+                              <SelectValue placeholder="Select rotation" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="0">0° (Horizontal)</SelectItem>
+                              <SelectItem value="-45">-45° (Diagonal)</SelectItem>
+                              <SelectItem value="-90">-90° (Vertical)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label className="text-slate-700">Pages</Label>
+                          <Select value={pages} onValueChange={setPages}>
+                            <SelectTrigger className="bg-white border-slate-300">
+                              <SelectValue placeholder="Select pages" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Pages</SelectItem>
+                              <SelectItem value="first">First Page Only</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                    </CardContent>
+                    <CardFooter>
+                      <Button 
+                        onClick={handleWatermark} 
+                        disabled={isProcessing} 
+                        className="w-full bg-orange-600 hover:bg-orange-700 text-white text-lg py-6 rounded-xl font-semibold shadow-lg shadow-orange-500/20"
+                      >
+                        {isProcessing ? (
+                          <>
+                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          <>
+                            <Download className="mr-2 h-5 w-5" />
+                            Add Watermark
+                          </>
+                        )}
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                </div>
+              )
             )}
           </div>
         </main>

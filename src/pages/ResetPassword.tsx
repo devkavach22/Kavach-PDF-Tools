@@ -1,59 +1,48 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-// Assuming these are standard UI component imports from a library like Shadcn/ui
 import { Button } from "@/components/ui/button"; 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { 
-  ArrowLeft, 
-  LockKeyhole, 
-  CheckCircle2, 
-  ShieldCheck, 
-  Check, 
-  Eye, 
-  EyeOff 
-} from "lucide-react";
-import { motion, AnimatePresence, useMotionValue, useMotionTemplate } from "framer-motion";
-import Particles from "@tsparticles/react";
-import { loadSlim } from "tsparticles-slim";
-import type { Engine } from "tsparticles-engine";
+import { ArrowLeft, LockKeyhole, CheckCircle2, ShieldCheck, Check, Eye, EyeOff } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
 
-// --- Utility Components and Constants ---
+// --- UTILS ---
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
-const particlesOptions = {
-  fullScreen: { enable: false, zIndex: 0 },
-  background: { color: { value: "transparent" } },
-  fpsLimit: 120,
-  interactivity: { events: { onHover: { enable: true, mode: "repulse" }, resize: true }, modes: { repulse: { distance: 150, duration: 0.4 } } },
-  particles: {
-    color: { value: ["#fb923c", "#f87171", "#fbbf24"] },
-    links: { color: "#fb923c", distance: 150, enable: true, opacity: 0.2, width: 1 },
-    move: { enable: true, speed: 1, direction: "none", random: true, outModes: { default: "bounce" } },
-    number: { density: { enable: true, area: 800 }, value: 80 },
-    opacity: { value: 0.4 },
-    shape: { type: "circle" },
-    size: { value: { min: 1, max: 3 } },
-  },
-  detectRetina: true,
+// --- COMPONENT: GLASS CARD ---
+const GlassCard = ({ children, className = "" }: any) => {
+  return (
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-[32px] border border-orange-100/60 bg-white/60 backdrop-blur-xl shadow-xl shadow-orange-900/5",
+        className
+      )}
+    >
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-orange-400/40 to-transparent opacity-50" />
+      <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent pointer-events-none" />
+      {children}
+    </div>
+  );
 };
 
 function RequirementItem({ isValid, text }: { isValid: boolean; text: string }) {
   return (
-    <div className={`flex items-center gap-2 text-xs transition-colors duration-200 ${isValid ? "text-emerald-600" : "text-slate-400"}`}>
-      {isValid ? <Check className="w-3.5 h-3.5" /> : <div className="w-3.5 h-3.5 rounded-full border border-slate-400" />}
-      <span className={`${isValid ? "text-slate-700" : "text-slate-500"}`}>{text}</span>
+    <div className={`flex items-center gap-2 text-xs transition-colors duration-200 ${isValid ? "text-emerald-600 font-medium" : "text-slate-400"}`}>
+      {isValid ? <Check className="w-3.5 h-3.5" /> : <div className="w-3.5 h-3.5 rounded-full border border-slate-300" />}
+      <span className={`${isValid ? "text-emerald-700" : "text-slate-500"}`}>{text}</span>
     </div>
   );
 }
-
-// --- Main Component ---
 
 export default function ResetPassword() {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Retrieve email passed from ForgotPassword page or set a mock/default
   const email = location.state?.email || "user@example.com"; 
 
   const [oldPassword, setOldPassword] = useState("");
@@ -77,25 +66,6 @@ export default function ResetPassword() {
   
   const [strength, setStrength] = useState({ score: 0, label: "Weak", color: "bg-red-500" });
 
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-
-  useEffect(() => {
-    // In a real app, you'd strictly redirect if no email is found.
-    // if (!location.state?.email) {
-    //   navigate("/forgot-password");
-    // }
-  }, [location.state?.email, navigate]);
-
-  function handleMouseMove({ currentTarget, clientX, clientY }: React.MouseEvent) {
-    const { left, top } = currentTarget.getBoundingClientRect();
-    mouseX.set(clientX - left);
-    mouseY.set(clientY - top);
-  }
-
-  const particlesInit = useCallback(async (engine: Engine) => { await loadSlim(engine); }, []);
-
-  // Real-time Validation Logic
   useEffect(() => {
     const minChars = newPassword.length >= 8;
     const firstUpper = /^[A-Z]/.test(newPassword);
@@ -105,12 +75,7 @@ export default function ResetPassword() {
     const notOldPassword = newPassword !== oldPassword && newPassword.length > 0;
 
     setNewPasswordChecks({ 
-      minChars, 
-      firstUpper, 
-      hasNumber, 
-      hasSpecial, 
-      match, 
-      notOldPassword 
+      minChars, firstUpper, hasNumber, hasSpecial, match, notOldPassword 
     });
 
     let score = 0;
@@ -119,16 +84,11 @@ export default function ResetPassword() {
     if (hasNumber) score++;
     if (hasSpecial) score++;
 
-    if (score <= 1) {
-      setStrength({ score, label: "Weak", color: "bg-red-500" });
-    } else if (score === 2) {
-       setStrength({ score, label: "Medium", color: "bg-yellow-500" });
-    } else if (score >= 3) {
-       if(newPassword.length >= 12) {
-        setStrength({ score, label: "Strong", color: "bg-emerald-500" });
-       } else {
-        setStrength({ score, label: "Good", color: "bg-emerald-400" });
-       }
+    if (score <= 1) setStrength({ score, label: "Weak", color: "bg-red-500" });
+    else if (score === 2) setStrength({ score, label: "Medium", color: "bg-yellow-500" });
+    else if (score >= 3) {
+       if(newPassword.length >= 12) setStrength({ score, label: "Strong", color: "bg-emerald-500" });
+       else setStrength({ score, label: "Good", color: "bg-emerald-400" });
     }
 
   }, [newPassword, confirm, oldPassword]);
@@ -150,62 +110,56 @@ export default function ResetPassword() {
 
     try {
       setLoading(true);
-      
-      const payload = { 
-        email, 
-        oldPassword, 
-        newPassword 
-      };
-
-      const response = await axios.put(API_URL, payload);
-      
-      console.log("Password change successful:", response.data);
-      
+      const payload = { email, oldPassword, newPassword };
+      await axios.put(API_URL, payload);
       setLoading(false);
       setIsSubmitted(true);
-      
-      navigate("/auth");
+      setTimeout(() => navigate("/auth"), 2000);
 
     } catch (err: any) {
       setLoading(false);
-      
       let errorMsg = "An unexpected error occurred.";
       if (err.response) {
         const backendError = err.response.data?.error || err.response.data?.message;
-        
         if (err.response.status === 401 && (backendError?.toLowerCase().includes("incorrect old password") || backendError?.toLowerCase().includes("unauthorized"))) {
            setOldPasswordError("Incorrect Old Password. Please try again.");
         } else {
            errorMsg = backendError || `Server Error: ${err.response.status}`;
            setApiError(errorMsg);
         }
-      } else if (err.request) {
-        errorMsg = "Could not connect to the server. Please check the network or server status.";
-        setApiError(errorMsg);
       } else {
         errorMsg = err.message;
         setApiError(errorMsg);
       }
-      
-      console.error("Password change failed:", err);
     }
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 relative overflow-hidden p-4">
-      <div className="absolute inset-0 z-0">
-        {/* @ts-ignore */}
-        <Particles id="tsparticles" init={particlesInit} options={particlesOptions} />
+    <div className="min-h-screen w-full flex items-center justify-center bg-[#FFF8F0] relative overflow-hidden p-4 font-sans selection:bg-orange-200 selection:text-orange-900">
+      
+      {/* --- BACKGROUND EFFECTS --- */}
+      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+        <motion.div 
+            animate={{ scale: [1, 1.2, 1], rotate: [0, 90, 0], opacity: [0.3, 0.5, 0.3] }}
+            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+            className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-gradient-to-r from-orange-200 to-amber-100 rounded-full blur-[100px] opacity-50" 
+        />
+        <motion.div 
+            animate={{ scale: [1, 1.3, 1], rotate: [0, -90, 0], opacity: [0.3, 0.5, 0.3] }}
+            transition={{ duration: 25, repeat: Infinity, ease: "linear", delay: 2 }}
+            className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] bg-gradient-to-l from-red-200 to-orange-100 rounded-full blur-[100px] opacity-50" 
+        />
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-30 mix-blend-soft-light"></div>
       </div>
 
-      <motion.div onMouseMove={handleMouseMove} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="group relative z-10 w-full max-w-lg rounded-3xl p-[1px] overflow-hidden">
-        <motion.div className="pointer-events-none absolute -inset-px rounded-3xl opacity-0 transition duration-300 group-hover:opacity-100"
-          style={{ background: useMotionTemplate`radial-gradient(600px circle at ${mouseX}px ${mouseY}px, rgba(251, 146, 60, 0.25), transparent 80%)` }}
-        />
-
-        <div className="relative bg-white/80 backdrop-blur-xl rounded-3xl border border-slate-200 shadow-2xl p-8 md:p-10">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }} 
+        animate={{ opacity: 1, y: 0 }} 
+        className="w-full max-w-lg relative z-10"
+      >
+        <GlassCard className="p-8 md:p-10">
           <div className="flex justify-center mb-6">
-            <div className="w-16 h-16 bg-white border border-slate-200 rounded-2xl flex items-center justify-center shadow-lg">
+            <div className="w-16 h-16 bg-white border border-orange-100 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/10">
               {isSubmitted ? <ShieldCheck className="w-8 h-8 text-emerald-500" /> : <LockKeyhole className="w-8 h-8 text-orange-500" />}
             </div>
           </div>
@@ -214,56 +168,53 @@ export default function ResetPassword() {
             {!isSubmitted ? (
               <motion.div key="form" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}>
                 <div className="text-center mb-6">
-                  <h2 className="text-2xl font-bold text-slate-900 mb-2">Change Password</h2>
-                  <p className="text-slate-500 text-sm">Verify your current password to set a new one for: <span className="text-orange-600 font-medium">{email}</span></p>
+                  <h2 className="text-2xl font-black text-slate-900 mb-2">Change Password</h2>
+                  <p className="text-slate-500 text-sm font-medium">Verify your current password to set a new one for: <br/><span className="text-orange-600 font-bold">{email}</span></p>
                 </div>
                 
                 {apiError && (
-                  <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="p-3 mb-4 text-sm text-red-600 bg-red-50 rounded-lg border border-red-200" role="alert">
+                  <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="p-3 mb-4 text-sm text-red-600 bg-red-50 rounded-xl border border-red-200 font-medium" role="alert">
                     {apiError}
                   </motion.div>
                 )}
 
                 <form className="space-y-5" onSubmit={handleSubmit}>
-                   {/* Old Password Field */}
-                   <div className="space-y-2">
-                    <Label className="text-slate-700">Old Password</Label>
+                   <div className="space-y-2 group">
+                    <Label className="text-slate-700 font-bold group-focus-within:text-orange-600 transition-colors">Old Password</Label>
                     <Input 
                       type="password" 
                       value={oldPassword} 
                       onChange={(e) => { setOldPassword(e.target.value); setOldPasswordError(""); setApiError(""); }} 
-                      className={`bg-slate-50 border-slate-200 text-slate-900 h-11 pl-3 focus:border-orange-500 transition-all ${oldPasswordError ? 'border-red-500/50' : ''}`} 
+                      className={`bg-white/50 border-orange-200/50 text-slate-900 h-11 pl-3 focus:border-orange-500 rounded-xl transition-all ${oldPasswordError ? 'border-red-500/50' : ''}`} 
                       placeholder="••••••••"
                       required
                     />
                     {oldPasswordError && (
-                        <p className="text-xs text-red-500 pt-1">{oldPasswordError}</p>
+                        <p className="text-xs text-red-500 pt-1 font-bold">{oldPasswordError}</p>
                     )}
                   </div>
                   
-                  {/* New Password Field */}
-                  <div className="space-y-2">
-                    <Label className="text-slate-700">New Password</Label>
+                  <div className="space-y-2 group">
+                    <Label className="text-slate-700 font-bold group-focus-within:text-orange-600 transition-colors">New Password</Label>
                     <div className="relative">
                       <Input 
                         type={showPassword ? "text" : "password"} 
                         value={newPassword} 
                         onChange={(e) => setNewPassword(e.target.value)} 
-                        className="bg-slate-50 border-slate-200 text-slate-900 h-11 pl-3 pr-10 focus:border-orange-500 transition-all" 
+                        className="bg-white/50 border-orange-200/50 text-slate-900 h-11 pl-3 pr-10 focus:border-orange-500 rounded-xl transition-all" 
                         placeholder="••••••••"
                         required
                       />
-                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-orange-600 transition-colors">
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
                     
-                    {/* Strength Meter Bar */}
                     {newPassword && (
-                      <div className="space-y-1 mt-2">
-                         <div className="flex justify-between text-xs">
-                            <span className={strength.score > 0 ? "text-slate-900" : "text-slate-500"}>Strength</span>
-                            <span className={`${strength.color.replace('bg-', 'text-')} font-medium`}>{strength.label}</span>
+                      <div className="space-y-1 mt-2 px-1">
+                         <div className="flex justify-between text-xs font-bold">
+                            <span className={strength.score > 0 ? "text-slate-700" : "text-slate-400"}>Strength</span>
+                            <span className={`${strength.color.replace('bg-', 'text-')}`}>{strength.label}</span>
                          </div>
                          <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
                             <motion.div 
@@ -276,34 +227,31 @@ export default function ResetPassword() {
                     )}
                   </div>
 
-                  {/* Confirm Password Field */}
-                  <div className="space-y-2">
-                    <Label className="text-slate-700">Re-Enter Password</Label>
+                  <div className="space-y-2 group">
+                    <Label className="text-slate-700 font-bold group-focus-within:text-orange-600 transition-colors">Re-Enter Password</Label>
                     <Input 
                       type="password" 
                       value={confirm} 
                       onChange={(e) => setConfirm(e.target.value)} 
-                      className={`bg-slate-50 border-slate-200 text-slate-900 h-11 pl-3 focus:border-orange-500 transition-all ${confirm.length > 0 && !newPasswordChecks.match ? 'border-red-500/50' : ''}`} 
+                      className={`bg-white/50 border-orange-200/50 text-slate-900 h-11 pl-3 focus:border-orange-500 rounded-xl transition-all ${confirm.length > 0 && !newPasswordChecks.match ? 'border-red-500/50' : ''}`} 
                       placeholder="••••••••"
                       required
                     />
                   </div>
 
-                  {/* Requirement Checklist */}
-                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">New Password Requirements</p>
-                    <RequirementItem isValid={newPasswordChecks.firstUpper} text="Starts with an uppercase letter" />
-                    <RequirementItem isValid={newPasswordChecks.hasNumber} text="Contains at least one number" />
-                    <RequirementItem isValid={newPasswordChecks.hasSpecial} text="Contains a special character (!@#...)" />
-                    <RequirementItem isValid={newPasswordChecks.minChars} text="Minimum 8 characters long" />
-                    <RequirementItem isValid={newPasswordChecks.notOldPassword} text="Must not be the same as old password" />
+                  <div className="bg-orange-50/50 p-4 rounded-xl border border-orange-100 space-y-2">
+                    <p className="text-xs font-black text-slate-500 uppercase tracking-wider mb-2">Requirements</p>
+                    <RequirementItem isValid={newPasswordChecks.firstUpper} text="Starts with uppercase letter" />
+                    <RequirementItem isValid={newPasswordChecks.hasNumber} text="Contains a number" />
+                    <RequirementItem isValid={newPasswordChecks.hasSpecial} text="Contains special character" />
+                    <RequirementItem isValid={newPasswordChecks.minChars} text="Min 8 characters long" />
                     <RequirementItem isValid={newPasswordChecks.match} text="Passwords match" />
                   </div>
 
                   <Button 
                     type="submit" 
                     disabled={loading || !isFormValid || !!oldPasswordError || !!apiError} 
-                    className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white h-11 rounded-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-orange-500/20"
+                    className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white h-12 rounded-xl font-bold shadow-lg shadow-orange-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:scale-[1.02]"
                   >
                     {loading ? "Updating..." : "Update Password"}
                   </Button>
@@ -312,19 +260,19 @@ export default function ResetPassword() {
             ) : (
               <motion.div key="success" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4 }} className="text-center py-8">
                 <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 200, damping: 15 }}>
-                  <CheckCircle2 className="w-24 h-24 text-emerald-500 mx-auto drop-shadow-[0_0_15px_rgba(52,211,153,0.4)]" />
+                  <CheckCircle2 className="w-24 h-24 text-emerald-500 mx-auto drop-shadow-xl" />
                 </motion.div>
-                <h2 className="text-3xl text-slate-900 font-bold mt-6">Success!</h2>
-                <p className="text-slate-500 text-base mt-2">Your password has been securely changed.</p>
+                <h2 className="text-3xl text-slate-900 font-black mt-6">Success!</h2>
+                <p className="text-slate-500 font-medium mt-2">Your password has been securely updated.</p>
               </motion.div>
             )}
           </AnimatePresence>
-          <div className="mt-8 text-center border-t border-slate-200 pt-6">
-            <Link to="/auth" className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors group">
+          <div className="mt-8 text-center border-t border-orange-100 pt-6">
+            <Link to="/auth" className="inline-flex items-center gap-2 text-slate-500 hover:text-orange-600 transition-colors font-bold group">
               <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> Back to Login
             </Link>
           </div>
-        </div>
+        </GlassCard>
       </motion.div>
     </div>
   );

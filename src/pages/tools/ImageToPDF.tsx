@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
+import Instance from "@/lib/axiosInstance";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,9 @@ import {
   Plus,
   RectangleHorizontal,
   RectangleVertical,
+  Loader2,
+  CheckCircle,
+  RefreshCw
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -43,6 +47,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
+// --- Types ---
 type SortableFile = {
   id: string;
   file: File;
@@ -53,6 +58,12 @@ type PageOrientation = "portrait" | "landscape";
 type PageMargin = "no" | "small" | "big";
 type PageSize = "a4" | "letter";
 
+interface ConvertedFileDetails {
+  outputFile: string;
+  message: string;
+}
+
+// --- Sortable Item Component ---
 function SortableImageItem({
   id,
   file,
@@ -113,12 +124,19 @@ function SortableImageItem({
   );
 }
 
+// --- Main Component ---
 export default function ImageToPDF() {
   const [files, setFiles] = useState<SortableFile[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  
+  // Options State
   const [orientation, setOrientation] = useState<PageOrientation>("portrait");
   const [pageSize, setPageSize] = useState<PageSize>("a4");
-  const [margin, setMargin] = useState<PageMargin>("no");
+  const [margin, setMargin] = useState<PageMargin>("small");
+
+  // Logic State
+  const [isConverting, setIsConverting] = useState(false);
+  const [convertedFile, setConvertedFile] = useState<ConvertedFileDetails | null>(null);
 
   const { toast } = useToast();
   const isAuthenticated = true;
@@ -142,6 +160,11 @@ export default function ImageToPDF() {
         })
       );
       setFiles((currentFiles) => [...currentFiles, ...newFiles]);
+      
+      // Reset converted state if user adds more files after a conversion
+      if (convertedFile) {
+        setConvertedFile(null);
+      }
       toast({ title: "Files added", description: `${newFiles.length} image(s) added` });
       e.target.value = "";
     }
@@ -167,12 +190,122 @@ export default function ImageToPDF() {
     setActiveId(null);
   };
 
-  const handleConvert = () => {
+  const handleReset = () => {
+    setFiles([]);
+    setConvertedFile(null);
+    setIsConverting(false);
+  };
+
+  const handleConvert = async () => {
     if (files.length === 0) {
       toast({ title: "Error", description: "Please select images first", variant: "destructive" });
       return;
     }
-    toast({ title: "Converting to PDF", description: `Combining ${files.length} image(s)...` });
+
+    setIsConverting(true);
+
+    try {
+      const formData = new FormData();
+      files.forEach((f) => {
+        formData.append('files', f.file);
+      });
+      
+      formData.append('orientation', orientation);
+      formData.append('size', pageSize.toUpperCase()); 
+      formData.append('margin', margin);
+
+      const token = localStorage.getItem("authToken");
+
+      const response = await Instance.post('/pdf/image-to-pdf', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+            'Authorization': token ? `${token}` : '',
+        }
+      });
+      
+      console.log("Full API Response:", response); // For debugging
+
+      // --- ROBUST RESPONSE HANDLING ---
+      let detectedPath = null;
+      const data = response.data;
+
+      if (data) {
+        // 1. Check specifically for 'downloadUrl' (Found in your Postman screenshot)
+        if (data.downloadUrl) {
+            detectedPath = data.downloadUrl;
+        } 
+        // 2. Check for 'outputFile' (Found in CompressPDF logic)
+        else if (data.outputFile) {
+            detectedPath = data.outputFile;
+        }
+        // 3. Fallback to check inside a 'files' array
+        else if (Array.isArray(data.files) && data.files.length > 0) {
+            const firstFile = data.files[0];
+            detectedPath = firstFile.outputFile || firstFile.path || firstFile.filename || firstFile.downloadUrl;
+        }
+      }
+
+      if (detectedPath) {
+        setConvertedFile({
+            outputFile: detectedPath,
+            message: data.message || "Images combined successfully!"
+        });
+        toast({ title: "Success", description: "PDF generated successfully." });
+      } else {
+        console.error("Structure mismatch. Response Data:", data);
+        throw new Error("Could not find a valid file path in the server response.");
+      }
+
+    } catch (error) {
+      console.error("Conversion Error:", error);
+      toast({ title: "Conversion Failed", description: "Could not generate PDF.", variant: "destructive" });
+    } finally {
+      setIsConverting(false);
+    }
+  };
+
+  const handleDownload = async () => {
+    if (!convertedFile || !convertedFile.outputFile) {
+        toast({ title: "Error", description: "No file to download", variant: "destructive" });
+        return;
+    }
+
+    // rawPath will be something like "/outputs/images_to_pdf_1764569780210.pdf"
+    const rawPath = convertedFile.outputFile;
+    // Extract filename: "images_to_pdf_1764569780210.pdf"
+    const filenameToDownload = rawPath.split(/[/\\]/).pop();
+
+    if (!filenameToDownload) {
+        toast({ title: "Error", description: "Invalid filename", variant: "destructive" });
+        return;
+    }
+
+    const token = localStorage.getItem("authToken");
+
+    try {
+        toast({ title: "Download Started", description: "Fetching your PDF..." });
+
+        const response = await Instance.get(`/pdf/download/${filenameToDownload}`, {
+            headers: { 'Authorization': token ? `${token}` : '' },
+            responseType: 'blob',
+        });
+
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', filenameToDownload);
+        
+        document.body.appendChild(link);
+        link.click();
+        
+        link.parentNode?.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        toast({ title: "Download Complete", description: "File saved to your device." });
+
+    } catch (error) {
+        console.error("Download failed", error);
+        toast({ title: "Download Failed", description: "Could not retrieve the file.", variant: "destructive" });
+    }
   };
 
   return (
@@ -211,8 +344,53 @@ export default function ImageToPDF() {
               </p>
             </div>
 
-            {files.length === 0 ? (
-              // --- UPLOAD STATE ---
+            {/* --- VIEW LOGIC --- */}
+            
+            {convertedFile ? (
+                // --- STATE 3: DOWNLOAD (SUCCESS) ---
+                <div className="max-w-2xl mx-auto mt-8">
+                    <Card className="bg-emerald-50 backdrop-blur-md shadow-xl border border-emerald-200 overflow-hidden relative">
+                         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-500 to-emerald-400" />
+                         <CardHeader className="text-center pb-2">
+                             <div className="mx-auto bg-white p-3 rounded-full mb-4 shadow-sm">
+                                 <CheckCircle className="h-8 w-8 text-emerald-600" />
+                             </div>
+                             <CardTitle className="text-emerald-900 text-2xl">Conversion Complete!</CardTitle>
+                             <CardDescription className="text-emerald-700 text-base">
+                                 {convertedFile.message}
+                             </CardDescription>
+                         </CardHeader>
+                         <CardContent className="space-y-6 pt-4">
+                             <div className="bg-white/60 rounded-xl p-6 border border-emerald-100 flex items-center justify-between">
+                                  <span className="text-emerald-800 font-medium text-sm uppercase tracking-wider">File Name</span>
+                                  <span className="text-emerald-900 font-mono text-sm truncate max-w-[250px]">
+                                    {convertedFile.outputFile.split(/[/\\]/).pop()}
+                                  </span>
+                             </div>
+
+                             <div className="flex flex-col sm:flex-row gap-4">
+                                <Button 
+                                    onClick={handleDownload} 
+                                    className="flex-1 bg-green-600 hover:bg-green-700 text-white py-6 rounded-xl font-semibold shadow-lg shadow-green-900/10 transition-all hover:scale-[1.02]"
+                                >
+                                    <Download className="mr-2 h-5 w-5" />
+                                    Download PDF
+                                </Button>
+                                <Button 
+                                    variant="outline" 
+                                    onClick={handleReset} 
+                                    className="bg-white border-slate-300 text-slate-700 hover:bg-slate-100 py-6 rounded-xl"
+                                >
+                                    <RefreshCw className="mr-2 h-4 w-4" />
+                                    Start Over
+                                </Button>
+                             </div>
+                         </CardContent>
+                    </Card>
+                </div>
+
+            ) : files.length === 0 ? (
+              // --- STATE 1: UPLOAD ---
               <Card className="bg-white/80 backdrop-blur-md shadow-xl border border-slate-200 max-w-4xl mx-auto mt-8">
                 <CardHeader>
                   <CardTitle className="text-slate-900">Upload Image Files</CardTitle>
@@ -240,7 +418,7 @@ export default function ImageToPDF() {
                 </CardContent>
               </Card>
             ) : (
-              // --- EDIT STATE ---
+              // --- STATE 2: EDIT / SORT ---
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-8">
                 <div className="md:col-span-2">
                   <DndContext
@@ -290,7 +468,7 @@ export default function ImageToPDF() {
 
                 {/* --- Right Sidebar --- */}
                 <div className="md:col-span-1">
-                  <Card className="bg-white/80 backdrop-blur-md shadow-xl border border-slate-200 sticky top-24">
+                  <Card className={`bg-white/80 backdrop-blur-md shadow-xl border border-slate-200 sticky top-24 transition-opacity ${isConverting ? 'opacity-70 pointer-events-none' : ''}`}>
                     <CardHeader>
                       <CardTitle className="text-slate-900">Options</CardTitle>
                     </CardHeader>
@@ -347,11 +525,20 @@ export default function ImageToPDF() {
 
                       <Button 
                         onClick={handleConvert} 
-                        disabled={files.length === 0}
-                        className="w-full bg-orange-600 hover:bg-orange-700 text-lg py-6 rounded-xl font-semibold transition-colors mt-4 text-white"
+                        disabled={files.length === 0 || isConverting}
+                        className="w-full bg-orange-600 hover:bg-orange-700 text-lg py-6 rounded-xl font-semibold transition-colors mt-4 text-white shadow-lg shadow-orange-500/20"
                       >
-                        <Download className="mr-2 h-5 w-5" />
-                        Convert PDF
+                         {isConverting ? (
+                          <>
+                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                            Converting...
+                          </>
+                        ) : (
+                          <>
+                            <Download className="mr-2 h-5 w-5" />
+                            Convert PDF
+                          </>
+                        )}
                       </Button>
 
                     </CardContent>

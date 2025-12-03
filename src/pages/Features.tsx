@@ -1,44 +1,38 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom"; 
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { motion, AnimatePresence } from "framer-motion";
-import Particles, { initParticlesEngine } from "@tsparticles/react";
-import { loadSlim } from "tsparticles-slim";
 import { 
   Shield, FileText, FileSignature, Minimize2, 
   Combine, Split, ImageIcon, Layers, ArrowRight, Sparkles, 
   Stamp, X, LogIn, UserPlus 
 } from "lucide-react";
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
 
-// Reuse the exact particle/theme config
-const particlesOptions = {
-  fullScreen: { enable: false, zIndex: 0 },
-  background: { color: { value: "transparent" } },
-  fpsLimit: 120,
-  interactivity: {
-    events: { onHover: { enable: true, mode: "repulse" }, resize: true },
-    modes: { repulse: { distance: 150, duration: 0.4 } },
-  },
-  particles: {
-    color: { value: ["#fb923c", "#f87171", "#fbbf24"] },
-    links: { color: "#cbd5e1", distance: 150, enable: true, opacity: 0.2, width: 1 },
-    move: { enable: true, speed: 1, direction: "none", random: true, outModes: { default: "bounce" } },
-    number: { density: { enable: true, area: 800 }, value: 80 },
-    opacity: { value: 0.5 },
-    shape: { type: "circle" },
-    size: { value: { min: 1, max: 3 } },
-  },
-  detectRetina: true,
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
+// --- COMPONENT: GLASS CARD ---
+const GlassCard = ({ children, className = "", onClick }: any) => {
+  return (
+    <motion.div
+      onClick={onClick}
+      whileHover={{ y: -5 }}
+      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+      className={cn(
+        "relative overflow-hidden rounded-[32px] border border-orange-100/60 bg-white/60 backdrop-blur-xl shadow-xl shadow-orange-900/5 cursor-pointer group",
+        className
+      )}
+    >
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-orange-400/40 to-transparent opacity-50" />
+      <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent pointer-events-none" />
+      {children}
+    </motion.div>
+  );
 };
-
-const GradientBlob = ({ className }: { className?: string }) => (
-  <motion.div 
-    animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3], rotate: [0, 45, 0] }}
-    transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-    className={`absolute rounded-full blur-[90px] filter ${className}`}
-  />
-);
 
 const allFeatures = [
   { title: "Merge PDF", path: "/tools/merge", desc: "Combine multiple PDFs into a single unified document instantly.", icon: Combine, color: "text-orange-500", bg: "bg-orange-50" },
@@ -58,32 +52,32 @@ const AuthModal = ({ isOpen, onClose, onLogin, onRegister }: any) => {
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <motion.div 
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose}
+        className="absolute inset-0 bg-slate-900/40 backdrop-blur-md" onClick={onClose}
       />
       <motion.div 
         initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-        className="relative bg-white border border-slate-200 p-8 rounded-2xl max-w-md w-full shadow-2xl"
+        className="relative bg-[#FFF8F0] border border-orange-100 p-8 rounded-3xl max-w-md w-full shadow-2xl"
       >
         <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-900">
           <X size={20} />
         </button>
         <div className="text-center mb-6">
-          <div className="w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-4 text-orange-500">
+          <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4 text-orange-600">
             <Shield size={32} />
           </div>
-          <h3 className="text-2xl font-bold text-slate-900 mb-2">Authentication Required</h3>
-          <p className="text-slate-600">To access these powerful PDF tools, please login to your account or create a new one.</p>
+          <h3 className="text-2xl font-black text-slate-900 mb-2">Authentication Required</h3>
+          <p className="text-slate-600 font-medium">To access these powerful PDF tools, please login to your account or create a new one.</p>
         </div>
         <div className="flex flex-col gap-3">
           <button 
             onClick={onLogin}
-            className="w-full py-3 px-4 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold rounded-lg flex items-center justify-center gap-2 transition-all shadow-lg shadow-orange-500/20"
+            className="w-full py-3 px-4 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-orange-500/20"
           >
             <LogIn size={18} /> Login Existing User
           </button>
           <button 
             onClick={onRegister}
-            className="w-full py-3 px-4 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-lg flex items-center justify-center gap-2 transition-all"
+            className="w-full py-3 px-4 bg-white border border-orange-200 hover:bg-orange-50 text-slate-700 font-bold rounded-xl flex items-center justify-center gap-2 transition-all"
           >
             <UserPlus size={18} /> Create New Account
           </button>
@@ -94,11 +88,8 @@ const AuthModal = ({ isOpen, onClose, onLogin, onRegister }: any) => {
 };
 
 export default function Features() {
-  const [init, setInit] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const navigate = useNavigate();
-
-  useEffect(() => { initParticlesEngine(async (engine) => await loadSlim(engine)).then(() => setInit(true)); }, []);
 
   const handleToolClick = (path: string) => {
     const isAuthenticated = localStorage.getItem("authToken"); 
@@ -111,25 +102,26 @@ export default function Features() {
 
   const handleLoginRedirect = () => {
     setShowAuthModal(false);
-    navigate("/login");
+    navigate("/auth"); // Updated route
   };
 
   const handleRegisterRedirect = () => {
     setShowAuthModal(false);
-    navigate("/register");
+    navigate("/auth"); // Updated route
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-white text-slate-900 font-sans overflow-x-hidden relative">
-      {/* Background */}
+    <div className="min-h-screen flex flex-col bg-[#FFF8F0] text-slate-900 font-sans overflow-x-hidden relative selection:bg-orange-200 selection:text-orange-900">
+      
+      {/* --- BACKGROUND EFFECTS --- */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.05]" />
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#f1f5f9_1px,transparent_1px),linear-gradient(to_bottom,#f1f5f9_1px,transparent_1px)] bg-[size:60px_60px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
-        <GradientBlob className="top-[-10%] left-[-5%] w-[600px] h-[600px] bg-orange-200/40" />
-        <GradientBlob className="bottom-[-10%] right-[-5%] w-[600px] h-[600px] bg-red-200/40" />
+        <motion.div 
+            animate={{ scale: [1, 1.2, 1], rotate: [0, 90, 0], opacity: [0.3, 0.5, 0.3] }}
+            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+            className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-gradient-to-r from-orange-200 to-amber-100 rounded-full blur-[100px] opacity-50" 
+        />
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-30 mix-blend-soft-light"></div>
       </div>
-
-      {init && <div className="absolute inset-0 z-0 opacity-50 pointer-events-none"><Particles id="tsparticles" options={particlesOptions} className="h-full w-full" /></div>}
 
       <div className="relative z-50"><Header /></div>
 
@@ -143,38 +135,32 @@ export default function Features() {
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-orange-50 border border-orange-200 text-orange-600 text-xs font-bold uppercase tracking-wider mb-6">
               <Sparkles size={14} /> Power Suite
             </div>
-            <h1 className="text-5xl md:text-6xl font-bold text-slate-900 mb-6">
+            <h1 className="text-5xl md:text-7xl font-black text-slate-900 mb-6 tracking-tight">
               Every tool to <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 via-red-500 to-amber-500">Master Documents.</span>
             </h1>
-            <p className="text-slate-600 max-w-2xl mx-auto text-lg">
+            <p className="text-slate-600 max-w-2xl mx-auto text-lg font-medium">
               A comprehensive ecosystem of tools designed to process, secure, and convert your documents with zero latency.
             </p>
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {allFeatures.map((feat, idx) => (
-              <motion.div
+              <GlassCard
                 key={idx}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: idx * 0.05 }}
                 onClick={() => handleToolClick(feat.path)}
-                className="group relative p-8 rounded-2xl bg-white border border-slate-200 hover:border-orange-200 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl shadow-slate-200/50 overflow-hidden cursor-pointer"
+                className="p-8"
               >
-                <div className="absolute inset-0 bg-gradient-to-br from-orange-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                
                 <div className="relative z-10">
-                  <div className={`w-12 h-12 rounded-lg ${feat.bg} flex items-center justify-center mb-6 ${feat.color} group-hover:scale-110 transition-transform`}>
-                    <feat.icon size={24} />
+                  <div className={`w-14 h-14 rounded-2xl ${feat.bg} flex items-center justify-center mb-6 ${feat.color} group-hover:scale-110 transition-transform duration-300 shadow-sm`}>
+                    <feat.icon size={26} />
                   </div>
-                  <h3 className="text-xl font-bold text-slate-900 mb-3 flex items-center gap-2">
+                  <h3 className="text-xl font-bold text-slate-900 mb-3 flex items-center gap-2 group-hover:text-orange-600 transition-colors">
                     {feat.title}
                     <ArrowRight className="w-4 h-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-orange-500" />
                   </h3>
-                  <p className="text-slate-500 leading-relaxed">{feat.desc}</p>
+                  <p className="text-slate-500 leading-relaxed font-medium">{feat.desc}</p>
                 </div>
-              </motion.div>
+              </GlassCard>
             ))}
           </div>
         </div>

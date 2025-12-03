@@ -1,147 +1,242 @@
 // controllers/pdf/watermarkPdf.js
 import fs from "fs";
 import path from "path";
-import { PDFDocument, rgb, degrees, StandardFonts } from "pdf-lib";
+import sharp from "sharp";
+import { PDFDocument, StandardFonts, rgb, degrees } from "pdf-lib";
 import { OUTPUT_DIR, removeFiles } from "../../utils/fileUtils.js";
 
-/**
- * Request:
- * - Upload: single file (field name: "file")
- * - Body JSON params (all optional except 'text'):
- *    - text (string)                // required
- *    - pages (string)              // "all" or "1,3,5-7"
- *    - fontSize (number)           // default: 48
- *    - color (string)              // hex e.g. "#000000" default: "#000000"
- *    - opacity (0-1)               // default: 0.15
- *    - rotation (number degrees)   // default: -45
- *    - position (string)           // "center" | "top-left" | "top-right" | "bottom-left" | "bottom-right" (default: "center")
- *    - margin (number)             // px margin from edges when using corners (default: 20)
- *
- * Returns:
- * - downloads watermarked PDF
- */
+/*
+SUPPORTED WATERMARK TYPES (like iLovePDF):
+------------------------------------------
+1️⃣ Text watermark:
+    {
+        "type": "text",
+        "text": "CONFIDENTIAL",
+        "fontSize": 60,
+        "color": "#FF0000",
+        "opacity": 0.2,
+        "rotation": -30,
+        "position": "center"
+    }
+
+2️⃣ Image watermark:
+    {
+        "type": "image",
+        "imageField": "image",
+        "width": 300,
+        "height": 200,
+        "opacity": 0.4,
+        "rotation": -15,
+        "position": "center"
+    }
+
+POSITION VALUES:
+- center
+- top-left / top-right / bottom-left / bottom-right
+*/
 
 function hexToRgb(hex) {
-  // support #RRGGBB or RRGGBB
-  const h = hex.replace("#", "");
-  const r = parseInt(h.substring(0, 2), 16) / 255;
-  const g = parseInt(h.substring(2, 4), 16) / 255;
-  const b = parseInt(h.substring(4, 6), 16) / 255;
-  return { r, g, b };
+  const clean = hex.replace("#", "");
+  return {
+    r: parseInt(clean.substring(0, 2), 16) / 255,
+    g: parseInt(clean.substring(2, 4), 16) / 255,
+    b: parseInt(clean.substring(4, 6), 16) / 255,
+  };
 }
 
 function parsePagesSpec(spec, totalPages) {
-  // spec: "all" or "1,3,5-7"
-  if (!spec || spec === "all") {
-    return Array.from({ length: totalPages }, (_, i) => i);
-  }
+  if (!spec || spec === "all") return [...Array(totalPages).keys()];
+  if (spec === "odd") return [...Array(totalPages).keys()].filter(i => (i + 1) % 2 === 1);
+  if (spec === "even") return [...Array(totalPages).keys()].filter(i => (i + 1) % 2 === 0);
+
   const pages = new Set();
   const parts = spec.split(",");
+
   for (const p of parts) {
     if (p.includes("-")) {
-      const [startStr, endStr] = p.split("-");
-      const start = Math.max(1, parseInt(startStr, 10));
-      const end = Math.min(totalPages, parseInt(endStr, 10));
-      for (let i = start; i <= end; i++) pages.add(i - 1);
+      const [s, e] = p.split("-").map(Number);
+      for (let i = s; i <= e; i++) pages.add(i - 1);
     } else {
-      const idx = parseInt(p, 10);
-      if (!isNaN(idx) && idx >= 1 && idx <= totalPages) pages.add(idx - 1);
+      const num = parseInt(p);
+      if (!isNaN(num)) pages.add(num - 1);
     }
   }
-  return Array.from(pages).sort((a, b) => a - b);
+  return [...pages];
 }
 
 export const watermarkPdf = async (req, res) => {
+  const tempFiles = [];
+
   try {
-    const file = req.file;
-    if (!file) return res.status(400).json({ error: "Upload a PDF in field 'file'." });
+    const pdfFiles = req.files?.file || req.file;
+    const fileList = Array.isArray(pdfFiles) ? pdfFiles : [pdfFiles];
 
-    const {
-      text,
-      pages = "all",
-      fontSize = 48,
-      color = "#000000",
-      opacity = 0.15,
-      rotation = -45,
-      position = "center",
-      margin = 20
-    } = req.body;
+    if (!fileList.length || !fileList[0])
+      return res.status(400).json({ files: [], error: "Upload PDF as 'file'." });
 
-    if (!text || text.toString().trim() === "") {
-      // cleanup
-      removeFiles([file.path]);
-      return res.status(400).json({ error: "Provide 'text' in request body for watermark." });
+    // Get watermark config
+    const configBody = req.body.config || req.body.watermark || "{}";
+    let config = {};
+    try {
+      config = typeof configBody === "string" ? JSON.parse(configBody) : configBody;
+    } catch {
+      config = {};
     }
 
-    const pdfBytes = fs.readFileSync(file.path);
-    const pdfDoc = await PDFDocument.load(pdfBytes);
+    if (!config.type)
+      return res.status(400).json({ files: [], error: "Specify watermark 'type' (text/image)" });
 
-    // choose font
-    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const resultFiles = [];
 
-    const totalPages = pdfDoc.getPageCount();
-    const pageIndices = parsePagesSpec(pages, totalPages);
+    // Process each PDF
+    for (const pdfFile of fileList) {
+      if (!pdfFile) continue;
+      tempFiles.push(pdfFile.path);
 
-    // compute color
-    const { r, g, b } = hexToRgb(color);
+      const pdfBytes = fs.readFileSync(pdfFile.path);
+      const pdfDoc = await PDFDocument.load(pdfBytes);
 
-    for (const idx of pageIndices) {
-      const page = pdfDoc.getPage(idx);
-      const { width, height } = page.getSize();
+      const totalPages = pdfDoc.getPageCount();
+      const pageIndices = parsePagesSpec(config.pages || "all", totalPages);
 
-      // measure text
-      const textWidth = font.widthOfTextAtSize(text, fontSize);
-      const textHeight = fontSize;
-
-      // determine placement
-      let x, y;
-      switch (position) {
-        case "top-left":
-          x = margin;
-          y = height - margin - textHeight;
-          break;
-        case "top-right":
-          x = width - margin - textWidth;
-          y = height - margin - textHeight;
-          break;
-        case "bottom-left":
-          x = margin;
-          y = margin;
-          break;
-        case "bottom-right":
-          x = width - margin - textWidth;
-          y = margin;
-          break;
-        case "center":
-        default:
-          x = (width - textWidth) / 2;
-          y = (height - textHeight) / 2;
+      // TEXT WATERMARK SETUP
+      let font = null;
+      if (config.type === "text") {
+        font = await pdfDoc.embedFont(StandardFonts.Helvetica);
       }
 
-      page.drawText(text, {
-        x,
-        y,
-        size: parseFloat(fontSize),
-        font,
-        color: rgb(r, g, b),
-        rotate: degrees(parseFloat(rotation)),
-        opacity: parseFloat(opacity)
+      // IMAGE WATERMARK SETUP
+      let embeddedImg = null;
+      let imgWidth = 0,
+        imgHeight = 0;
+
+      if (config.type === "image") {
+        const field = config.imageField || "image";
+
+        if (!req.files || !req.files[field]) {
+          return res.status(400).json({
+            files: [],
+            error: `Upload watermark image using field '${field}'`,
+          });
+        }
+
+        const imgFile = req.files[field][0];
+        tempFiles.push(imgFile.path);
+
+        const imgBuffer = fs.readFileSync(imgFile.path);
+        const pngBuffer = await sharp(imgBuffer).png().toBuffer();
+        embeddedImg = await pdfDoc.embedPng(pngBuffer);
+        imgWidth = config.width || embeddedImg.width;
+        imgHeight = config.height || embeddedImg.height;
+      }
+
+      // Apply watermark to pages
+      for (const idx of pageIndices) {
+        const page = pdfDoc.getPage(idx);
+        const { width, height } = page.getSize();
+        const margin = Number(config.margin || 20);
+
+        let x = 0,
+          y = 0;
+
+        const position = config.position || "center";
+
+        // Position logic
+        if (config.type === "text") {
+          const fontSize = Number(config.fontSize || 50);
+          const text = config.text || "Watermark";
+          const textWidth = font.widthOfTextAtSize(text, fontSize);
+
+          switch (position) {
+            case "top-left":
+              x = margin;
+              y = height - margin;
+              break;
+            case "top-right":
+              x = width - textWidth - margin;
+              y = height - margin;
+              break;
+            case "bottom-left":
+              x = margin;
+              y = margin + fontSize;
+              break;
+            case "bottom-right":
+              x = width - textWidth - margin;
+              y = margin + fontSize;
+              break;
+            default:
+              x = (width - textWidth) / 2;
+              y = height / 2;
+          }
+
+          const { r, g, b } = hexToRgb(config.color || "#000000");
+
+          page.drawText(text, {
+            x,
+            y,
+            size: fontSize,
+            color: rgb(r, g, b),
+            opacity: Number(config.opacity ?? 0.15),
+            rotate: degrees(Number(config.rotation || -45)),
+            font,
+          });
+        }
+
+        if (config.type === "image") {
+          switch (position) {
+            case "top-left":
+              x = margin;
+              y = height - imgHeight - margin;
+              break;
+            case "top-right":
+              x = width - imgWidth - margin;
+              y = height - imgHeight - margin;
+              break;
+            case "bottom-left":
+              x = margin;
+              y = margin;
+              break;
+            case "bottom-right":
+              x = width - imgWidth - margin;
+              y = margin;
+              break;
+            default:
+              x = (width - imgWidth) / 2;
+              y = (height - imgHeight) / 2;
+          }
+
+          page.drawImage(embeddedImg, {
+            x,
+            y,
+            width: imgWidth,
+            height: imgHeight,
+            opacity: Number(config.opacity ?? 0.2),
+            rotate: degrees(Number(config.rotation || 0)),
+          });
+        }
+      }
+
+      const outName = `${path.parse(pdfFile.originalname).name}_watermarked_${Date.now()}.pdf`;
+      const outPath = path.join(OUTPUT_DIR, outName);
+
+      const outBytes = await pdfDoc.save();
+      fs.writeFileSync(outPath, outBytes);
+
+      resultFiles.push({
+        outputFile: `/outputs/${outName}`,
+        status: "success",
+        message: "Watermark applied successfully",
       });
     }
 
-    const outName = `${path.parse(file.originalname).name}_watermarked_${Date.now()}.pdf`;
-    const outPath = path.join(OUTPUT_DIR, outName);
-    const outBytes = await pdfDoc.save();
-    fs.writeFileSync(outPath, outBytes);
-
-    // cleanup uploaded file
-    removeFiles([file.path]);
-
-    return res.download(outPath, outName, (err) => {
-      if (err) console.error("Download err:", err);
-    });
+    removeFiles(tempFiles);
+    return res.json({ files: resultFiles });
   } catch (err) {
     console.error("watermarkPdf error:", err);
-    return res.status(500).json({ error: "Watermark failed: " + (err.message || err) });
+    removeFiles(tempFiles);
+    return res.status(500).json({
+      files: [],
+      error: err.message || "Watermark failed.",
+    });
   }
 };

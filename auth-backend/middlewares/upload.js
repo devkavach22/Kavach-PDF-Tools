@@ -2,6 +2,24 @@ import multer from "multer";
 import fs from "fs";
 import path from "path";
 
+// Utility to safely extract folderId from ANY place
+function getFolderId(req) {
+  // 1️⃣ Try body (multipart/form-data)
+  if (req.body?.folderId) return req.body.folderId;
+
+  // 2️⃣ Try query (?folderId=123)
+  if (req.query?.folderId) return req.query.folderId;
+
+  // 3️⃣ Try params (/api/workspace/upload/:folderId)
+  if (req.params?.folderId) return req.params.folderId;
+
+  // 4️⃣ Extract folderId from URL if present
+  const match = req.originalUrl.match(/folderId=([^&]+)/);
+  if (match) return match[1];
+
+  return null;
+}
+
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const userId = req.user?.id;
@@ -21,15 +39,21 @@ const storage = multer.diskStorage({
     }
 
     // 2️⃣ WORKSPACE ROUTES — REQUIRE folderId
-    const folderId = req.body.folderId || req.query.folderId;
+    const folderId = getFolderId(req);
 
     if (!folderId) {
       return cb(new Error("Folder ID is missing"));
     }
 
-    const workspacePath = path.join("uploads", "workspace", userId.toString(), folderId.toString());
+    const workspacePath = path.join(
+      "uploads",
+      "workspace",
+      userId.toString(),
+      folderId.toString()
+    );
 
     fs.mkdirSync(workspacePath, { recursive: true });
+
     return cb(null, workspacePath);
   }
 });

@@ -5,6 +5,8 @@ import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import authRoutes from "./routes/authRoutes.js";
 import pdfRoutes from "./routes/pdfRoutes.js";
+import searchRoutes from "./routes/searchRoutes.js";
+import { runIndexingPipeline } from "./search/indexingPipeline.js";
 import path from "path";
 
 dotenv.config();
@@ -15,8 +17,8 @@ const MONGO_URL = process.env.MONGO_URL;
 const FRONTEND_URL = process.env.FRONTEND_URL;
 
 const allowedOrigins = [
-    // "http://localhost:8080",        
-    "https://kavach-pdf-tools.onrender.com",   // Local fronten          // Production frontend (domain)
+    "http://localhost:8080",        
+    // "https://kavach-pdf-tools.onrender.com",   // Local fronten          // Production frontend (domain)
 ];
 
 app.use(cors({
@@ -32,12 +34,15 @@ app.use(cookieParser());
 
 app.use("/api/auth",authRoutes);
 app.use("/api/pdf",pdfRoutes);
+app.use("/api/search",searchRoutes);
 
 mongoose.connect(MONGO_URL, {
     useNewUrlParser: true,
     useUnifiedTopology: true
 })
-.then(() => {
+.then(async () => {
+
+    await runIndexingPipeline();
     console.log("Connected to MongoDB");
     app.listen(process.env.PORT, "0.0.0.0", () => {
     console.log(`Server running on ${process.env.PORT}`);
@@ -46,3 +51,17 @@ mongoose.connect(MONGO_URL, {
 .catch((error) => {
     console.error("MongoDB connection error:", error);
 });
+
+
+// mongoose.connect(process.env.MONGO_URL)
+//   .then(async () => {
+//     console.log("MongoDB Connected");
+
+    
+//     await runIndexingPipeline();
+
+//     app.listen(process.env.PORT, "0.0.0.0", () =>
+//       console.log(`Server running at ${process.env.PORT}`)
+//     );
+//   })
+//   .catch(err => console.log("MongoDB Error:", err));

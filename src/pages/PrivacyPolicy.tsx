@@ -1,52 +1,38 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { motion } from "framer-motion";
-import Particles, { initParticlesEngine } from "@tsparticles/react";
-import { loadSlim } from "tsparticles-slim";
+import { Link } from "react-router-dom";
 import { Shield, Lock, FileText, Server, Globe } from "lucide-react";
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
 
-// --- Shared Theme Configuration ---
-const particlesOptions = {
-  fullScreen: { enable: false, zIndex: 0 },
-  background: { color: { value: "transparent" } },
-  fpsLimit: 120,
-  particles: {
-    color: { value: ["#fb923c", "#f87171", "#fbbf24"] },
-    links: { color: "#fb923c", distance: 150, enable: true, opacity: 0.2, width: 1 },
-    move: { enable: true, speed: 1, direction: "none", random: true, outModes: { default: "bounce" } },
-    number: { density: { enable: true, area: 800 }, value: 80 },
-    opacity: { value: 0.4 },
-    shape: { type: "circle" },
-    size: { value: { min: 1, max: 3 } },
-  },
-  detectRetina: true,
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
+// --- COMPONENT: GLASS CARD ---
+const GlassCard = ({ children, className = "" }: any) => {
+  return (
+    <div className={cn("relative overflow-hidden rounded-[32px] border border-orange-100/60 bg-white/60 backdrop-blur-xl shadow-xl shadow-orange-900/5", className)}>
+       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-orange-400/40 to-transparent opacity-50" />
+       {children}
+    </div>
+  );
 };
 
-const GradientBlob = ({ className }: { className?: string }) => (
-  <motion.div 
-    animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0.4, 0.2], rotate: [0, 45, 0] }}
-    transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-    className={`absolute rounded-full mix-blend-multiply blur-[90px] filter ${className}`}
-  />
-);
-
 export default function PrivacyPolicy() {
-  const [init, setInit] = useState(false);
-  useEffect(() => { initParticlesEngine(async (engine) => await loadSlim(engine)).then(() => setInit(true)); }, []);
-
   return (
-    <div className="min-h-screen flex flex-col bg-white text-slate-900 font-sans overflow-x-hidden relative">
-      {/* Background */}
+    <div className="min-h-screen flex flex-col bg-[#FFF8F0] text-slate-900 font-sans overflow-x-hidden relative selection:bg-orange-200 selection:text-orange-900">
+      
+      {/* --- BACKGROUND EFFECTS --- */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03]" />
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#fb923c0a_1px,transparent_1px),linear-gradient(to_bottom,#fb923c0a_1px,transparent_1px)] bg-[size:60px_60px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
-        <GradientBlob className="top-[-10%] right-[-5%] w-[600px] h-[600px] bg-orange-200/40" />
-        <GradientBlob className="bottom-[-10%] left-[-5%] w-[500px] h-[500px] bg-red-200/40" />
+        <motion.div 
+            animate={{ scale: [1, 1.2, 1], rotate: [0, 90, 0], opacity: [0.3, 0.5, 0.3] }}
+            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+            className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-gradient-to-r from-orange-200 to-amber-100 rounded-full blur-[100px] opacity-50" 
+        />
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-30 mix-blend-soft-light"></div>
       </div>
-
-      {init && <div className="absolute inset-0 z-0 opacity-50 pointer-events-none"><Particles id="tsparticles" options={particlesOptions} className="h-full w-full" /></div>}
 
       <div className="relative z-50"><Header /></div>
 
@@ -57,16 +43,16 @@ export default function PrivacyPolicy() {
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-16 border-b border-slate-200 pb-12"
+            className="mb-16 border-b border-orange-100 pb-12"
           >
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-100 border border-orange-200 text-orange-700 text-sm font-bold mb-6">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-50 border border-orange-200 text-orange-600 text-sm font-bold mb-6">
               <Shield size={14} />
               <span>Your Data is Secure</span>
             </div>
-            <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-6">Privacy Policy</h1>
-            <p className="text-slate-600 text-lg leading-relaxed">
+            <h1 className="text-4xl md:text-5xl font-black text-slate-900 mb-6">Privacy Policy</h1>
+            <p className="text-slate-600 text-lg leading-relaxed font-medium">
               At Kavach, trust is our currency. This document outlines exactly how we handle your documents, your data, and your rights. <br />
-              <span className="text-orange-600">Last Updated: November 21, 2025</span>
+              <span className="text-orange-600 font-bold">Last Updated: November 21, 2025</span>
             </p>
           </motion.div>
 
@@ -78,67 +64,67 @@ export default function PrivacyPolicy() {
             className="space-y-12"
           >
             {/* Section 1 */}
-            <section>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 rounded-lg bg-slate-100 text-orange-600 border border-slate-200"><FileText size={24} /></div>
+            <GlassCard className="p-8">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 rounded-xl bg-orange-50 text-orange-600 border border-orange-100"><FileText size={24} /></div>
                 <h2 className="text-2xl font-bold text-slate-900">1. The Core Principle: File Processing</h2>
               </div>
-              <div className="pl-4 md:pl-14 space-y-4 text-slate-600 leading-relaxed">
+              <div className="pl-4 md:pl-14 space-y-4 text-slate-600 leading-relaxed font-medium">
                 <p>
                   Our primary function is processing PDF documents. We adhere to a strict processing protocol:
                 </p>
-                <ul className="list-disc pl-5 space-y-2">
+                <ul className="list-disc pl-5 space-y-3">
                   <li>
-                    <strong className="text-slate-900">Client-Side Processing:</strong> Whenever possible (e.g., merging, splitting, organizing), files are processed entirely within your browser using WebAssembly. In these cases, your documents <span className="text-red-600">never leave your device</span>.
+                    <strong className="text-slate-900">Client-Side Processing:</strong> Whenever possible (e.g., merging, splitting), files are processed in your browser using WebAssembly. <span className="text-red-600 font-bold">Files never leave your device.</span>
                   </li>
                   <li>
-                    <strong className="text-slate-900">Server-Side Processing:</strong> For complex tasks (e.g., high-end OCR, heavy compression), files are transmitted to our secure servers via TLS 1.3 encryption.
+                    <strong className="text-slate-900">Server-Side Processing:</strong> For complex tasks, files are transmitted via TLS 1.3 encryption.
                   </li>
                   <li>
-                    <strong className="text-slate-900">Automatic Deletion:</strong> Any file uploaded to our servers is automatically and permanently deleted <strong>1 hour</strong> after processing is complete. We do not create backups of user uploaded documents.
+                    <strong className="text-slate-900">Automatic Deletion:</strong> Any uploaded file is automatically and permanently deleted <strong>1 hour</strong> after processing.
                   </li>
                 </ul>
               </div>
-            </section>
+            </GlassCard>
 
             {/* Section 2 */}
             <section>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 rounded-lg bg-slate-100 text-red-600 border border-slate-200"><Lock size={24} /></div>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 rounded-xl bg-red-50 text-red-600 border border-red-100"><Lock size={24} /></div>
                 <h2 className="text-2xl font-bold text-slate-900">2. Data Collection & Usage</h2>
               </div>
-              <div className="pl-4 md:pl-14 space-y-4 text-slate-600 leading-relaxed">
+              <div className="pl-4 md:pl-14 space-y-4 text-slate-600 leading-relaxed font-medium">
                 <p>We collect minimal data to ensure the service functions correctly:</p>
-                <div className="grid md:grid-cols-2 gap-4 mt-4">
-                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-                        <h4 className="text-slate-900 font-bold mb-2">What We Collect</h4>
-                        <ul className="text-sm space-y-2">
-                            <li>• Account info (Email, Name) for Pro users</li>
-                            <li>• Usage metadata (timestamps, file types)</li>
-                            <li>• Payment processing data (handled by Stripe)</li>
+                <div className="grid md:grid-cols-2 gap-6 mt-6">
+                    <GlassCard className="p-6 bg-white/40">
+                        <h4 className="text-slate-900 font-bold mb-3">What We Collect</h4>
+                        <ul className="text-sm space-y-2 font-medium">
+                            <li>• Account info (Email, Name)</li>
+                            <li>• Usage metadata (timestamps)</li>
+                            <li>• Payment processing data (Stripe)</li>
                         </ul>
-                    </div>
-                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-                        <h4 className="text-slate-900 font-bold mb-2">What We DO NOT Collect</h4>
-                        <ul className="text-sm space-y-2">
+                    </GlassCard>
+                    <GlassCard className="p-6 bg-white/40">
+                        <h4 className="text-slate-900 font-bold mb-3">What We DO NOT Collect</h4>
+                        <ul className="text-sm space-y-2 font-medium">
                             <li>• The content of your PDF files</li>
                             <li>• Passwords used to encrypt your PDFs</li>
                             <li>• Biometric data from e-signatures</li>
                         </ul>
-                    </div>
+                    </GlassCard>
                 </div>
               </div>
             </section>
 
-            {/* Section 3 */}
+             {/* Section 3 */}
             <section>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 rounded-lg bg-slate-100 text-amber-600 border border-slate-200"><Globe size={24} /></div>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 rounded-xl bg-amber-50 text-amber-600 border border-amber-100"><Globe size={24} /></div>
                 <h2 className="text-2xl font-bold text-slate-900">3. Third-Party Sharing</h2>
               </div>
-              <div className="pl-4 md:pl-14 space-y-4 text-slate-600 leading-relaxed">
+              <div className="pl-4 md:pl-14 space-y-4 text-slate-600 leading-relaxed font-medium">
                 <p>
-                  We do not sell, trade, or rent your personal identification information to others. We may use third-party service providers to help us operate our business:
+                  We do not sell, trade, or rent your personal identification information. We use these providers:
                 </p>
                 <ul className="list-disc pl-5 space-y-2">
                     <li><strong>Google Analytics:</strong> For understanding website traffic (anonymized).</li>
@@ -148,31 +134,16 @@ export default function PrivacyPolicy() {
               </div>
             </section>
 
-            {/* Section 4 */}
-            <section>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 rounded-lg bg-slate-100 text-orange-600 border border-slate-200"><Server size={24} /></div>
-                <h2 className="text-2xl font-bold text-slate-900">4. Data Retention</h2>
-              </div>
-              <div className="pl-4 md:pl-14 space-y-4 text-slate-600 leading-relaxed">
-                <p>
-                  <strong>Uploaded Files:</strong> Deleted after 1 hour. <br/>
-                  <strong>Account Data:</strong> Retained as long as your account is active. You may request full account deletion at any time via your dashboard settings. <br/>
-                  <strong>Logs:</strong> Server access logs are retained for 30 days for security auditing and then overwritten.
-                </p>
-              </div>
-            </section>
-
             {/* Contact */}
-            <div className="mt-12 p-8 rounded-2xl bg-gradient-to-br from-orange-50 to-red-50 border border-orange-200">
+            <GlassCard className="p-8 bg-gradient-to-br from-orange-50 to-red-50 border-orange-200">
                 <h3 className="text-xl font-bold text-slate-900 mb-2">Privacy Officer Contact</h3>
-                <p className="text-slate-600 mb-4">
+                <p className="text-slate-600 mb-4 font-medium">
                     If you have questions regarding this policy or your personal data, please contact us.
                 </p>
                 <Link to="/contact" className="text-orange-600 font-bold hover:text-orange-500 transition-colors underline">
                     security@kavach.io
                 </Link>
-            </div>
+            </GlassCard>
 
           </motion.div>
         </div>

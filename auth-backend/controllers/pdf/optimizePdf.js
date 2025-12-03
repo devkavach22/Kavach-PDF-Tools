@@ -1,71 +1,142 @@
-// controllers/pdf/optimizePdf.js
 import path from "path";
 import fs from "fs";
 import { execFile } from "child_process";
 import { OUTPUT_DIR, removeFiles } from "../../utils/fileUtils.js";
 
-/**
- * optimizePdf - Ghostscript-based optimization with presets and options
- *
- * Request:
- *  - upload single file as 'file'
- *  - body:
- *     - preset: "screen"|"ebook"|"printer"|"prepress"  (default: "screen")
- *     - downscaleImages: boolean (default true)    // instructive only, handled by preset
- *     - jpegQuality: number 1-100 (optional control for custom compression)
- *
- * Notes:
- *  - Ghostscript presets map to /screen /ebook /printer /prepress
- *  - For custom settings, we construct args accordingly
- */
+// Ensure OUTPUT_DIR exists
+if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 
-const presetMap = {
-  screen: "/screen",
-  ebook: "/ebook",
-  printer: "/printer",
-  prepress: "/prepress"
-};
+// ---------------------------
+// Detect Python executable
+// ---------------------------
+function detectPython() {
+  return new Promise((resolve) => {
+    execFile("python3", ["--version"], (err) => {
+      if (!err) return resolve("python3");
+      execFile("python", ["--version"], (err2) => {
+        if (!err2) return resolve("python");
+        resolve(null);
+      });
+    });
+  });
+}
 
-export const optimizePdf = async (req, res) => {
-  try {
-    const file = req.file;
-    if (!file) return res.status(400).json({ error: "Upload PDF in field 'file'." });
+// ---------------------------
+// Run Python optimize_pdf.py with full logging
+// ---------------------------
+function runOptimizePdf(pythonExec, inputPdf, outputPdf, options) {
+  return new Promise((resolve, reject) => {
+    const scriptPath = path.join(process.cwd(), "optimize_pdf.py");
+    if (!fs.existsSync(scriptPath))
+      return reject(new Error("Python script optimize_pdf.py not found"));
 
-    const presetKey = (req.body.preset || "screen").toLowerCase();
-    const preset = presetMap[presetKey] || presetMap.screen;
-    const jpegQuality = parseInt(req.body.jpegQuality || "75", 10);
-
-    const outName = `${path.parse(file.originalname).name}_optimized_${Date.now()}.pdf`;
-    const outPath = path.join(OUTPUT_DIR, outName);
-
-    // Build ghostscript args. We include -dColorImageDownsampleType and -dColorImageResolution if custom flow needed.
-    // For hybrid approach, use PDFSETTINGS and optionally override downsample and JPEG quality.
-    const gs = "gs";
-    const args = [
-      "-sDEVICE=pdfwrite",
-      "-dCompatibilityLevel=1.4",
-      `-dPDFSETTINGS=${preset}`,
-      "-dNOPAUSE",
-      "-dQUIET",
-      "-dBATCH",
-      `-sOutputFile=${outPath}`,
-      file.path
-    ];
-
-    // Attempt to run ghostscript
-    execFile(gs, args, (err) => {
-      // cleanup uploaded
-      removeFiles([file.path]);
+    execFile(pythonExec, [scriptPath, inputPdf, outputPdf, options], (err, stdout, stderr) => {
+      console.log("Python stdout:", stdout);
+      console.log("Python stderr:", stderr);
 
       if (err) {
-        console.error("Ghostscript optimize error:", err);
-        return res.status(500).json({ error: "Optimization failed. Ensure Ghostscript is installed." });
+        return reject({
+          message: "Python script failed",
+          stdout: stdout.trim(),
+          stderr: stderr.trim()
+        });
       }
 
-      return res.download(outPath, outName);
+      resolve(stdout);
     });
+  });
+}
+
+// ---------------------------
+// Normalize frontend options
+// ---------------------------
+function normalizeOptions(options) {
+  const mapping = {
+    "remove metadata": "remove_metadata",
+    "image compression": "image_compression",
+    "remove unused objects": "remove_unused_objects",
+    "flatten forms": "flatten_forms",
+    "remove bookmarks": "remove_bookmarks",
+    "optimize transparency": "optimize_transparency",
+    "secure optimization": "secure_optimization",
+    "archival (pdf/a)": "archival_(pdf/a)"
+  };
+
+  return options
+    .map(opt => mapping[opt.toLowerCase()] || null)
+    .filter(Boolean);
+}
+
+// ---------------------------
+// Main API handler
+// ---------------------------
+export const optimizePdf = async (req, res) => {
+  try {
+    const files = req.files || (req.file ? [req.file] : []);
+    if (!files.length)
+      return res.status(400).json({ error: "Upload PDF(s) in 'files' or 'file'." });
+
+    const pythonExec = await detectPython();
+    if (!pythonExec)
+      return res.status(500).json({ error: "Python not found. Install Python 3." });
+
+    const level = req.body.level || "recommended";
+
+    // Handle options passed as array or string
+    let optionsFromFront = req.body.options || [];
+    if (typeof optionsFromFront === "string") {
+      try {
+        optionsFromFront = JSON.parse(optionsFromFront);
+        if (!Array.isArray(optionsFromFront)) optionsFromFront = [];
+      } catch {
+        optionsFromFront = optionsFromFront.split(",");
+      }
+    }
+
+    const normalizedOptions = normalizeOptions(optionsFromFront);
+    const pythonOptions = [...normalizedOptions, `level:${level}`].join(",");
+
+    const responseData = [];
+
+    for (const f of files) {
+      const baseName = path.parse(f.originalname).name.replace(/[^a-zA-Z0-9-_]/g, "_");
+      const outName = `${baseName}_optimized_${Date.now()}.pdf`;
+      const outPath = path.join(OUTPUT_DIR, outName);
+
+      try {
+        await runOptimizePdf(pythonExec, f.path, outPath, pythonOptions);
+
+        if (!fs.existsSync(outPath)) throw new Error("Optimized PDF not generated");
+
+        responseData.push({
+          originalName: f.originalname,
+          outputFile: `/outputs/${outName}`,
+          message: "Optimization successful",
+          pythonStdout: "",    // empty because success
+          pythonStderr: ""
+        });
+
+        removeFiles([f.path]);
+
+      } catch (err) {
+        responseData.push({
+          originalName: f.originalname,
+          outputFile: null,
+          message: "Optimization failed",
+          error: err.message || err,
+          pythonStdout: err.stdout || "",
+          pythonStderr: err.stderr || ""
+        });
+      }
+    }
+
+    return res.json({
+      message: "PDF optimization completed",
+      files: responseData
+    });
+
   } catch (err) {
     console.error("optimizePdf error:", err);
-    return res.status(500).json({ error: "Optimize failed: " + (err.message || err) });
+    return res.status(500).json({ error: "optimizePdf failed: " + err.message });
   }
 };

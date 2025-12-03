@@ -4,7 +4,6 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-// ✅ Imports verified
 import { Upload, ArrowRightLeft, ArrowLeft, Download, Loader2, CheckCircle, RefreshCw, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
@@ -69,34 +68,38 @@ export default function PDFToWord() {
     formData.append("file", file);
 
     try {
-      const convertResponse = await Instance.post("/pdf/pdf-to-word", formData, {
+      const response = await Instance.post("/pdf/pdf-to-word", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      console.log("SERVER RESPONSE:", convertResponse.data); // Check console if issue persists
+      console.log("SERVER RESPONSE:", response.data);
 
-      // --- CRASH PROTECTION: Robust Filename Extraction ---
+      // --- FIX START: Robust Parsing Logic (Matches CompressPDF) ---
       let generatedFileName = "";
-      const data = convertResponse.data;
-
-      if (typeof data === 'string') {
-        generatedFileName = data;
-      } else if (typeof data === 'object' && data !== null) {
-        // Try every possible key the backend might be using
+      
+      // 1. Check if response has 'files' array (Standard for your backend tools)
+      if (response.data.files && Array.isArray(response.data.files) && response.data.files.length > 0) {
+        const fileData = response.data.files[0];
+        generatedFileName = fileData.outputFile || fileData.fileName || fileData.filename || fileData.name;
+      } 
+      // 2. Fallback: Check direct object properties
+      else if (typeof response.data === 'object' && response.data !== null) {
         generatedFileName = 
-          data.fileName || 
-          data.filename || 
-          data.outputFile || 
-          data.file || 
-          data.name ||
-          ""; 
+          response.data.fileName || 
+          response.data.filename || 
+          response.data.outputFile || 
+          response.data.file || 
+          response.data.name;
+      }
+      // 3. Fallback: String response
+      else if (typeof response.data === 'string') {
+        generatedFileName = response.data;
       }
 
-      // If we still don't have a string, throw error to prevent React crash
-      if (!generatedFileName || typeof generatedFileName !== 'string') {
-        console.error("Invalid Filename:", generatedFileName);
+      if (!generatedFileName) {
         throw new Error("Server returned a response, but could not find the filename.");
       }
+      // --- FIX END ---
 
       const fileData: ConvertedFileDetails = {
         originalName: file.name,
@@ -139,14 +142,24 @@ export default function PDFToWord() {
       return;
     }
 
-    const filenameToDownload = convertedFile.outputFileName;
+    // --- LOGIC ALIGNED WITH CompressPDF.tsx ---
+    const rawPath = convertedFile.outputFileName;
+    const filenameToDownload = rawPath.split(/[/\\]/).pop();
+
+    if (!filenameToDownload) {
+        toast({ title: "Error", description: "Could not parse filename", variant: "destructive" });
+        return;
+    }
+
     const token = localStorage.getItem("authToken");
 
     try {
       toast({ title: "Download Started", description: "Fetching your Word document..." });
 
       const response = await Instance.get(`/pdf/download/${filenameToDownload}`, {
-        headers: { 'Authorization': token ? `${token}` : '' },
+        headers: { 
+          'Authorization': token ? `${token}` : '' 
+        },
         responseType: "blob",
       });
 
@@ -156,7 +169,7 @@ export default function PDFToWord() {
       
       const downloadName = convertedFile.originalName 
         ? convertedFile.originalName.replace(/\.pdf$/i, ".docx")
-        : "converted-document.docx";
+        : filenameToDownload;
         
       link.setAttribute("download", downloadName);
       document.body.appendChild(link);
@@ -256,7 +269,7 @@ export default function PDFToWord() {
                   </CardContent>
                 </Card>
               ) : (
-                // --- STATE 2: SUCCESS & DOWNLOAD ---
+                // --- STATE 2: SUCCESS & DOWNLOAD (MATCHES CompressPDF) ---
                 <Card className="bg-emerald-50 backdrop-blur-md shadow-xl border border-emerald-200 h-full relative overflow-hidden">
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-500 to-emerald-400" />
                   <CardHeader>
@@ -264,9 +277,8 @@ export default function PDFToWord() {
                       <CheckCircle className="h-6 w-6 text-emerald-600" />
                       <CardTitle className="text-emerald-900">Conversion Complete!</CardTitle>
                     </div>
-                    {/* SAFE RENDER: Wrapped in String() to prevent Object-Render crash */}
                     <CardDescription className="text-emerald-700">
-                      {String(convertedFile?.message || "File converted successfully")}
+                      {convertedFile?.message || "File converted successfully"}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
@@ -278,9 +290,9 @@ export default function PDFToWord() {
                             </div>
                             <div>
                                 <span className="text-emerald-700 text-xs block uppercase font-semibold">Output File</span>
-                                {/* SAFE RENDER: Wrapped in String() */}
                                 <span className="text-emerald-900 font-mono text-sm truncate max-w-[200px] block">
-                                  {String(convertedFile?.outputFileName || "Unknown_File")}
+                                  {/* Just show the filename part */}
+                                  {convertedFile?.outputFileName ? String(convertedFile.outputFileName).split(/[/\\]/).pop() : "Unknown_File"}
                                 </span>
                             </div>
                         </div>

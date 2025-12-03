@@ -1,54 +1,65 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
+import Instance from "@/lib/axiosInstance"; 
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Upload, Download, ArrowLeft, X, FileText, Lock, Eye, EyeOff } from "lucide-react";
+import { Upload, ArrowLeft, X, FileText, Lock, Eye, EyeOff, Loader2, CheckCircle, RefreshCw, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { motion } from "framer-motion";
 
-type Permissions = {
-  printing: boolean;
-  copying: boolean;
-  modifying: boolean;
-  commenting: boolean;
-  accessibility: boolean;
-};
+interface ProtectedFileDetails {
+  originalName: string;
+  outputFile: string;
+  message: string;
+}
+
+const STORAGE_KEY = "kavach_protected_file";
 
 export default function LockPDF() {
   const [file, setFile] = useState<File | null>(null);
-  const [userPassword, setUserPassword] = useState("");
-  const [ownerPassword, setOwnerPassword] = useState("");
-  const [showUserPass, setShowUserPass] = useState(false);
-  const [showOwnerPass, setShowOwnerPass] = useState(false);
-  const [encryption, setEncryption] = useState("AES-256");
-  const [outputFilename, setOutputFilename] = useState("");
-  const [permissions, setPermissions] = useState<Permissions>({
-    printing: false,
-    copying: false,
-    modifying: false,
-    commenting: false,
-    accessibility: true,
-  });
+  
+  // Settings State
+  const [password, setPassword] = useState("");
+  const [showPass, setShowPass] = useState(false);
+
+  // Processing State
+  const [isProtecting, setIsProtecting] = useState(false);
+  const [protectedFile, setProtectedFile] = useState<ProtectedFileDetails | null>(null);
 
   const { toast } = useToast();
   const isAuthenticated = true;
   const isAdmin = false;
 
+  // Create a preview URL for the uploaded PDF
+  const previewUrl = useMemo(() => {
+    return file ? URL.createObjectURL(file) : null;
+  }, [file]);
+
+  // Load previous session if exists
+  useEffect(() => {
+    const storedData = localStorage.getItem(STORAGE_KEY);
+    if (storedData) {
+      try {
+        const parsedData: ProtectedFileDetails = JSON.parse(storedData);
+        setProtectedFile(parsedData);
+      } catch (error) {
+        console.error("Failed to parse stored protected file data", error);
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    }
+  }, []);
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
       setFile(selectedFile);
-      const name = selectedFile.name.endsWith('.pdf') 
-        ? selectedFile.name.replace(/\.pdf$/, '') 
-        : selectedFile.name;
-      setOutputFilename(`locked_${name}.pdf`);
+      setProtectedFile(null); 
+      localStorage.removeItem(STORAGE_KEY);
       
       toast({
         title: "File uploaded",
@@ -59,51 +70,118 @@ export default function LockPDF() {
   
   const removeFile = () => {
     setFile(null);
-    setUserPassword("");
-    setOwnerPassword("");
-    setOutputFilename("");
+    setPassword("");
+    setProtectedFile(null);
+    localStorage.removeItem(STORAGE_KEY);
+    const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+    if (fileInput) fileInput.value = '';
   }
 
-  const handlePermissionChange = (perm: keyof Permissions) => {
-    setPermissions(prev => ({ ...prev, [perm]: !prev[perm] }));
-  };
-
-  const handleLockPDF = () => {
+  const handleLockPDF = async () => {
     if (!file) {
       toast({ title: "Error", description: "Please select a PDF file first", variant: "destructive" });
       return;
     }
-    if (!ownerPassword) {
-      toast({ title: "Error", description: "An Owner Password is required to set permissions", variant: "destructive" });
+    
+    if (!password) {
+      toast({ title: "Error", description: "Please enter a password to lock the file.", variant: "destructive" });
       return;
     }
-    toast({ title: "Protecting PDF", description: "Your file is being encrypted and locked..." });
+
+    setIsProtecting(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('password', password); 
+      
+      const token = localStorage.getItem("authToken");
+
+      const response = await Instance.post('/pdf/protect-pdf', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+            'Authorization': token ? `${token}` : '',
+        }
+      });
+
+      if (response.data) {
+        const outputFileName = response.data.file || response.data.downloadUrl;
+        
+        if (!outputFileName) {
+            throw new Error("Output filename not found in response");
+        }
+
+        const fileData: ProtectedFileDetails = {
+           originalName: file.name,
+           outputFile: outputFileName, 
+           message: response.data.message || "File protected successfully"
+        };
+
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(fileData));
+        setProtectedFile(fileData);
+        toast({ title: "Success!", description: "Your PDF has been password protected." });
+      }
+
+    } catch (error) {
+      console.error("Protection Error:", error);
+      toast({ 
+        title: "Protection Failed", 
+        description: "There was an error processing your request.", 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsProtecting(false);
+    }
+  };
+
+  const handleDownload = async () => {
+    const storedData = localStorage.getItem(STORAGE_KEY);
+    let fileDetails: ProtectedFileDetails | null = null;
+
+    if (storedData) fileDetails = JSON.parse(storedData);
+    else if (protectedFile) fileDetails = protectedFile;
+
+    if (!fileDetails || !fileDetails.outputFile) {
+      toast({ title: "Download Error", description: "No protected file record found.", variant: "destructive" });
+      return;
+    }
+
+    const rawPath = fileDetails.outputFile;
+    const filenameToDownload = rawPath.split(/[/\\]/).pop();
+
+    if (!filenameToDownload) {
+        toast({ title: "Error", description: "Could not parse filename", variant: "destructive" });
+        return;
+    }
+
+    const token = localStorage.getItem("authToken");
+    
+    try {
+      toast({ title: "Download Started", description: "Fetching your protected file..." });
+
+      const response = await Instance.get(`/pdf/download/${filenameToDownload}`, {
+        headers: { 'Authorization': token ? `${token}` : '' },
+        responseType: 'blob', 
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filenameToDownload); 
+      
+      document.body.appendChild(link);
+      link.click();
+      
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      toast({ title: "Download Complete", description: "File saved to your device." });
+
+    } catch (error) {
+      console.error("Download Error:", error);
+      toast({ title: "Download Failed", description: "Could not download the file.", variant: "destructive" });
+    }
   };
   
-  const PasswordInput = ({ id, label, value, onChange, show, onToggle }: any) => (
-    <div className="space-y-2">
-      <Label htmlFor={id} className="text-slate-700">{label}</Label>
-      <div className="relative">
-        <Input
-          id={id}
-          type={show ? "text" : "password"}
-          value={value}
-          onChange={onChange}
-          className="pr-10 bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-orange-500 focus:ring-orange-200"
-        />
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="absolute right-1 top-1 h-7 w-7 text-slate-400 hover:text-orange-500 hover:bg-transparent"
-          onClick={onToggle}
-        >
-          {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-        </Button>
-      </div>
-    </div>
-  );
-
   return (
     <div className="relative flex flex-col min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-orange-100 selection:text-orange-900 overflow-x-hidden">
       
@@ -118,7 +196,8 @@ export default function LockPDF() {
       <div className="relative z-10 flex flex-col min-h-screen">
         <Header isAuthenticated={isAuthenticated} isAdmin={isAdmin} onLogout={() => console.log("Logout")} />
       
-        <main className="flex-1 py-16">
+        {/* Updated Spacing: pt-32 for header clearance, pb-12 for footer spacing */}
+        <main className="flex-1 flex-col pt-32 pb-12">
           <div className="max-w-7xl mx-auto space-y-6 px-4 sm:px-6 lg:px-8">
           
             <Link
@@ -129,9 +208,8 @@ export default function LockPDF() {
               <span className="text-slate-600">Back to Tools</span>
             </Link>
 
-            {/* === CONDITIONAL UI: SHOW UPLOAD OR EDITOR === */}
-            {!file ? (
-              /* === UPLOAD UI === */
+            {/* === STATE 1: UPLOAD UI (No File Selected) === */}
+            {!file && !protectedFile && (
               <div className="space-y-12">
                 <div className="text-center space-y-3">
                   <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-100 border border-orange-200 animate-float">
@@ -143,7 +221,7 @@ export default function LockPDF() {
                     </span>
                   </h1>
                   <p className="text-lg text-slate-500 max-w-xl mx-auto">
-                    Encrypt and add passwords or permissions to your PDF
+                    Secure your PDF with a password
                   </p>
                 </div>
 
@@ -173,13 +251,15 @@ export default function LockPDF() {
                   </CardContent>
                 </Card>
               </div>
-            ) : (
-              /* === EDITOR UI (FILE UPLOADED) === */
-              <div className="flex flex-col lg:flex-row gap-8">
+            )}
+
+            {/* === STATE 2: EDITOR UI (File Selected) === */}
+            {file && !protectedFile && (
+              <div className="flex flex-col lg:flex-row gap-8 h-[calc(100vh-250px)] min-h-[600px]">
                 
-                {/* === Main Content (Left) === */}
-                <div className="flex-1 space-y-4">
-                  <Card className="bg-white/80 backdrop-blur-md shadow-xl border border-slate-200">
+                {/* === Main Content (Left - Preview) === */}
+                <div className="flex-1 flex flex-col space-y-4">
+                  <Card className="flex-none bg-white/80 backdrop-blur-md shadow-xl border border-slate-200">
                     <CardContent className="p-4 flex justify-between items-center">
                       <div className="flex items-center gap-3">
                         <div className="p-2 bg-orange-100 rounded-lg">
@@ -187,122 +267,135 @@ export default function LockPDF() {
                         </div>
                         <span className="font-medium text-slate-800">{file.name}</span>
                       </div>
-                      <Button variant="ghost" size="icon" onClick={removeFile} className="text-slate-400 hover:text-red-500 hover:bg-red-50">
+                      <Button variant="ghost" size="icon" onClick={removeFile} disabled={isProtecting} className="text-slate-400 hover:text-red-500 hover:bg-red-50">
                         <X className="h-4 w-4" />
                       </Button>
                     </CardContent>
                   </Card>
                   
-                  {/* Placeholder for PDF preview */}
-                  <div className="w-full h-[600px] bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center">
-                    <p className="text-slate-400">PDF Preview Area</p>
+                  {/* Real PDF Preview */}
+                  <div className="flex-1 bg-slate-100 rounded-xl border border-slate-200 overflow-hidden relative shadow-inner">
+                    {previewUrl ? (
+                      <iframe 
+                        src={`${previewUrl}#toolbar=0&navpanes=0`} 
+                        className="w-full h-full"
+                        title="PDF Preview"
+                      />
+                    ) : (
+                       <div className="flex items-center justify-center h-full text-slate-400">
+                         Loading preview...
+                       </div>
+                    )}
                   </div>
                 </div>
 
-                {/* === Sidebar (Right) === */}
+                {/* === Sidebar (Right - Controls) === */}
                 <Card className="w-full lg:w-96 bg-white/90 backdrop-blur-md shadow-xl border border-slate-200 h-fit">
                   <CardHeader>
-                    <CardTitle className="text-slate-900">Protection Settings</CardTitle>
+                    <CardTitle className="text-slate-900">Security Settings</CardTitle>
+                    <CardDescription>Set a password to open this file</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     
-                    {/* === Password Settings === */}
-                    <div className="space-y-4">
-                      <h3 className="font-semibold text-orange-600">Password Settings</h3>
-                      <PasswordInput
-                        id="user-password"
-                        label="User Password (open)"
-                        value={userPassword}
-                        onChange={(e: any) => setUserPassword(e.target.value)}
-                        show={showUserPass}
-                        onToggle={() => setShowUserPass(!showUserPass)}
-                      />
-                      <PasswordInput
-                        id="owner-password"
-                        label="Owner Password (permissions)"
-                        value={ownerPassword}
-                        onChange={(e: any) => setOwnerPassword(e.target.value)}
-                        show={showOwnerPass}
-                        onToggle={() => setShowOwnerPass(!showOwnerPass)}
-                      />
+                    {/* === Password Input === */}
+                    <div className="space-y-2">
+                      <Label htmlFor="password" className="text-slate-700">Password</Label>
+                      <div className="relative">
+                        <Input
+                          id="password"
+                          type={showPass ? "text" : "password"}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          disabled={isProtecting}
+                          placeholder="Enter strong password"
+                          className="pr-10 bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-orange-500 focus:ring-orange-200"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-1 top-1 h-7 w-7 text-slate-400 hover:text-orange-500 hover:bg-transparent"
+                          onClick={() => setShowPass(!showPass)}
+                          disabled={isProtecting}
+                        >
+                          {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
                       <p className="text-xs text-slate-500">
-                        An Owner Password is required to set permissions.
+                        This password will be required to open the PDF.
                       </p>
                     </div>
 
                     <Separator className="bg-slate-200" />
-
-                    {/* === Permissions === */}
-                    <div className="space-y-3">
-                      <h3 className="font-semibold text-orange-600">Permissions</h3>
-                      <div className="grid grid-cols-1 gap-3">
-                        {(Object.keys(permissions) as Array<keyof Permissions>).map((perm) => (
-                          <div key={perm} className="flex items-center space-x-3">
-                            <Checkbox
-                              id={perm}
-                              checked={permissions[perm]}
-                              onCheckedChange={() => handlePermissionChange(perm)}
-                              disabled={!ownerPassword}
-                              className="border-slate-400 data-[state=checked]:bg-orange-600 data-[state=checked]:border-orange-600"
-                            />
-                            <Label htmlFor={perm} className="capitalize text-sm font-normal text-slate-700 cursor-pointer">
-                              Allow {perm}
-                            </Label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <Separator className="bg-slate-200" />
-
-                    {/* === Encryption & Output === */}
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="encryption-type" className="text-slate-700">Encryption Type</Label>
-                        <Select value={encryption} onValueChange={setEncryption}>
-                          <SelectTrigger id="encryption-type" className="bg-white border-slate-300 text-slate-900">
-                            <SelectValue placeholder="Select encryption" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-white border-slate-200 text-slate-900">
-                            <SelectItem value="AES-128">AES-128</SelectItem>
-                            <SelectItem value="AES-256">AES-256 (Recommended)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="output-filename" className="text-slate-700">Output Filename</Label>
-                        <Input
-                          id="output-filename"
-                          value={outputFilename}
-                          onChange={(e) => setOutputFilename(e.target.value)}
-                          className="bg-white border-slate-300 text-slate-900 placeholder:text-slate-400"
-                        />
-                      </div>
-                    </div>
                     
                   </CardContent>
                   <CardFooter className="flex flex-col gap-3 pt-2">
                     <Button 
                       onClick={handleLockPDF} 
-                      disabled={!file || !ownerPassword}
-                      className="w-full bg-orange-600 hover:bg-orange-700 text-lg py-6 rounded-xl font-semibold transition-colors text-white"
+                      disabled={!file || !password || isProtecting}
+                      className="w-full bg-orange-600 hover:bg-orange-700 text-lg py-6 rounded-xl font-semibold transition-colors text-white shadow-lg shadow-orange-500/20"
                     >
-                      <Lock className="mr-2 h-5 w-5" />
-                      Lock PDF
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      className="w-full bg-transparent border-slate-300 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                      disabled={true}
-                    >
-                      <Download className="mr-2 h-5 w-5" />
-                      Download Locked PDF
+                      {isProtecting ? (
+                        <>
+                          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                          Protecting...
+                        </>
+                      ) : (
+                        <>
+                          <Lock className="mr-2 h-5 w-5" />
+                          Lock PDF
+                        </>
+                      )}
                     </Button>
                   </CardFooter>
                 </Card>
               </div>
             )}
+
+            {/* === STATE 3: SUCCESS UI (File Protected) === */}
+            {protectedFile && (
+              <div className="max-w-2xl mx-auto mt-10">
+                <Card className="bg-emerald-50 backdrop-blur-md shadow-xl border border-emerald-200 h-full relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-500 to-emerald-400" />
+                  <CardHeader>
+                    <div className="flex items-center gap-3 mb-2">
+                      <CheckCircle className="h-6 w-6 text-emerald-600" />
+                      <CardTitle className="text-emerald-900">Protection Complete!</CardTitle>
+                    </div>
+                    <CardDescription className="text-emerald-700">
+                      {protectedFile.message}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    
+                    <div className="bg-white/60 rounded-xl p-6 border border-emerald-100">
+                      <div className="flex items-center justify-between p-3 bg-emerald-100/50 rounded-lg mb-4">
+                        <span className="text-emerald-700 text-sm">File Name</span>
+                        <span className="text-emerald-900 font-mono text-sm truncate max-w-[200px]">
+                          {protectedFile.outputFile.split(/[/\\]/).pop()}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-emerald-800 bg-emerald-100/30 p-3 rounded-lg border border-emerald-100">
+                         <Lock className="h-4 w-4" />
+                         <span>Secured with password</span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-4">
+                        <Button onClick={handleDownload} className="flex-1 bg-green-600 hover:bg-green-700 text-white py-6 rounded-xl font-semibold shadow-lg shadow-green-900/10 transition-all hover:scale-[1.02]">
+                          <Download className="mr-2 h-5 w-5" />
+                          Download PDF
+                        </Button>
+                        <Button variant="outline" onClick={removeFile} className="bg-white border-slate-300 text-slate-700 hover:bg-slate-100 py-6 rounded-xl">
+                          <RefreshCw className="mr-2 h-4 w-4" />
+                          Protect Another
+                        </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
           </div>
         </main>
         <Footer />

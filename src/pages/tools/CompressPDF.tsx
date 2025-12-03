@@ -174,7 +174,9 @@ export default function CompressPDF() {
 
       <div className="relative z-10 flex flex-col min-h-screen">
         <Header isAuthenticated={isAuthenticated} isAdmin={isAdmin} onLogout={() => console.log("Logout clicked")} />
-
+        <br/>
+        <br/>
+        <br/>
         <main className="flex-1 flex-col py-16">
           <div className="max-w-7xl mx-auto space-y-6 px-4 sm:px-6 lg:px-8">
             

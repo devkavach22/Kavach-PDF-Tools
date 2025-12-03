@@ -4,94 +4,124 @@ import fitz               # PyMuPDF
 import easyocr
 from PIL import Image
 from docx import Document
+import pandas as pd
+import docx2txt
 
-# Load EasyOCR reader once (improves speed)
+# Load EasyOCR reader once
 READER = easyocr.Reader(['en'], gpu=False)
 
-
-# -------------------------------------------------------------
-# Convert image bytes → text
-# -------------------------------------------------------------
+# ---------------------------------------------
+# OCR image
+# ---------------------------------------------
 def ocr_image(image_bytes: bytes) -> str:
     import numpy as np
     img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     arr = np.array(img)
-
     results = READER.readtext(arr, detail=0)
     return "\n".join(results).strip()
 
-
-# -------------------------------------------------------------
-# Convert PDF → images → EasyOCR text
-# -------------------------------------------------------------
-def ocr_pdf(pdf_bytes: bytes) -> str:
+# ---------------------------------------------
+# PDF extraction (OCR + embedded text)
+# ---------------------------------------------
+def extract_pdf(pdf_bytes: bytes) -> str:
     text_pages = []
-
-    # Load PDF from memory (NO poppler required)
     pdf = fitz.open(stream=pdf_bytes, filetype="pdf")
 
-    for page_index in range(len(pdf)):
-        page = pdf.load_page(page_index)
+    for page_index, page in enumerate(pdf):
+        # 1️⃣ Extract embedded text (if real text exists)
+        embedded_text = page.get_text().strip()
 
-        # Convert page → high-quality image
-        pix = page.get_pixmap(dpi=300)
-        img_bytes = pix.tobytes("png")
-
-        # OCR the page
-        page_text = ocr_image(img_bytes)
-        text_pages.append(f"--- PAGE {page_index+1} ---\n{page_text}")
+        # 2️⃣ If page has little/no embedded text → fallback to OCR
+        if len(embedded_text) < 20:
+            pix = page.get_pixmap(dpi=300)
+            img_bytes = pix.tobytes("png")
+            ocr_text = ocr_image(img_bytes)
+            text_pages.append(f"--- PAGE {page_index+1} ---\n{ocr_text}")
+        else:
+            text_pages.append(f"--- PAGE {page_index+1} ---\n{embedded_text}")
 
     return "\n\n".join(text_pages).strip()
 
-
-# -------------------------------------------------------------
-# Extract DOCX text
-# -------------------------------------------------------------
+# ---------------------------------------------
+# Extract DOCX including tables
+# ---------------------------------------------
 def extract_docx(docx_bytes: bytes) -> str:
     try:
         file_like = io.BytesIO(docx_bytes)
         doc = Document(file_like)
 
         lines = []
+        # Extract paragraphs
         for para in doc.paragraphs:
             if para.text.strip():
                 lines.append(para.text.strip())
 
-        return "\n".join(lines)
+        # Extract tables (ATS Friendly Resume tables)
+        for table in doc.tables:
+            for row in table.rows:
+                row_text = [cell.text.strip() for cell in row.cells if cell.text.strip()]
+                if row_text:
+                    lines.append(" | ".join(row_text))
+
+        return "\n".join(lines).strip()
+    except:
+        # More accurate DOCX extraction fallback
+        try:
+            return docx2txt.process(io.BytesIO(docx_bytes))
+        except:
+            return ""
+
+# ---------------------------------------------
+# Read simple text formats
+# ---------------------------------------------
+def read_simple_text(file_bytes: bytes) -> str:
+    try:
+        return file_bytes.decode("utf-8", errors="ignore")
+    except:
+        return file_bytes.decode("latin-1", errors="ignore")
+
+# ---------------------------------------------
+# XLSX extraction to readable text
+# ---------------------------------------------
+def extract_xlsx(xlsx_bytes: bytes) -> str:
+    try:
+        file_like = io.BytesIO(xlsx_bytes)
+        df = pd.read_excel(file_like)
+        return df.to_string(index=False)
     except:
         return ""
 
-
-# -------------------------------------------------------------
-# Universal extractor for ANY file type
-# -------------------------------------------------------------
+# ---------------------------------------------
+# Universal text extractor
+# ---------------------------------------------
 def extract_text_from_file(file_bytes: bytes, filename: str) -> str:
     ext = os.path.splitext(filename)[1].lower()
 
-    # ---- IMAGE FILES ----
+    # Images
     if ext in [".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp"]:
         return ocr_image(file_bytes)
 
-    # ---- PDF ----
+    # PDF (text + scanned resume OCR)
     if ext == ".pdf":
-        return ocr_pdf(file_bytes)
+        return extract_pdf(file_bytes)
 
-    # ---- DOCX ----
+    # DOCX (ATS-friendly resumes)
     if ext == ".docx":
         return extract_docx(file_bytes)
 
-    # ---- SIMPLE TEXT ----
-    if ext in [".txt", ".csv", ".json", ".md", ".log",".xlsx"]:
-        return file_bytes.decode("utf-8", errors="ignore")
-
-    # ---- DOC (old format) ----
+    # DOC (convert-like fallback)
     if ext == ".doc":
-        # Convert DOC → DOCX fallback through python-docx cannot open DOC.
-        # So we treat DOC as scanned image container.
-        # Try PDF conversion first:
-        return "DOC format not directly supported. Convert to DOCX or PDF."
+        return "DOC extraction not fully supported. Convert to DOCX for best results."
 
-    # ---- ANY OTHER FILE (fallback OCR) ----
+    # Excel
+    if ext == ".xlsx":
+        return extract_xlsx(file_bytes)
+
+    # Simple text-based
+    if ext in [".txt", ".csv", ".json", ".md", ".log"]:
+        return read_simple_text(file_bytes)
+
+    # Unknown → attempt OCR
     try:
         return ocr_image(file_bytes)
     except:

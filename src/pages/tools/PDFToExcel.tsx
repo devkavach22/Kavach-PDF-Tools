@@ -1,22 +1,60 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Upload, FileSpreadsheet, ArrowLeft } from "lucide-react";
+import { Upload, FileSpreadsheet, ArrowLeft, Loader2, Download, CheckCircle, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
+import axiosInstance from "@/lib/axiosInstance"; 
+
+interface ConvertedFileDetails {
+  originalName: string;
+  outputFilename: string;
+  originalSize: number;
+}
+
+const STORAGE_KEY = "kavach_excel_file";
 
 export default function PDFToExcel() {
   const [file, setFile] = useState<File | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [convertedFile, setConvertedFile] = useState<ConvertedFileDetails | null>(null);
+  
   const { toast } = useToast();
+  
   const isAuthenticated = true;
   const isAdmin = false;
+
+  useEffect(() => {
+    const storedData = localStorage.getItem(STORAGE_KEY);
+    if (storedData) {
+      try {
+        const parsedData: ConvertedFileDetails = JSON.parse(storedData);
+        setConvertedFile(parsedData);
+      } catch (error) {
+        console.error("Failed to parse stored converted file data", error);
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    }
+  }, []);
+
+  const formatBytes = (bytes: number, decimals = 2) => {
+    if (!+bytes) return '0 Bytes';
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
+      setConvertedFile(null); 
+      localStorage.removeItem(STORAGE_KEY);
+      
       toast({
         title: "File uploaded",
         description: `${e.target.files[0].name} ready to convert`,
@@ -24,12 +62,143 @@ export default function PDFToExcel() {
     }
   };
 
-  const handleConvert = () => {
+  const handleConvert = async () => {
     if (!file) {
       toast({ title: "Error", description: "Please select a PDF file first", variant: "destructive" });
       return;
     }
-    toast({ title: "Converting to Excel", description: "Your PDF is being converted..." });
+
+    setIsLoading(true);
+    toast({ title: "Converting...", description: "Processing your PDF file." });
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file); 
+      const token = localStorage.getItem("authToken");
+
+      const uploadResponse = await axiosInstance.post("/pdf/pdf-to-excel", formData, {
+        headers: { 
+          "Content-Type": "multipart/form-data",
+          'Authorization': token ? `${token}` : '',
+        },
+      });
+
+      console.log("Full Server Response:", uploadResponse.data); // Check console if it fails again
+
+      const responseData = uploadResponse.data;
+      let targetFilename = "";
+
+      // 1. IMPROVED PARSING LOGIC
+      // Check if response matches CompressPDF structure (files array)
+      if (responseData.files && Array.isArray(responseData.files) && responseData.files.length > 0) {
+        const fileData = responseData.files[0];
+        // Try common property names
+        targetFilename = fileData.outputFile || fileData.outputFilename || fileData.filename || fileData.file;
+      }
+      // Check flat structure variants
+      else if (typeof responseData === 'string') targetFilename = responseData;
+      else if (responseData?.filename) targetFilename = responseData.filename;
+      else if (responseData?.file) targetFilename = responseData.file;
+      else if (responseData?.data) targetFilename = responseData.data;
+
+      if (!targetFilename) {
+        throw new Error("Server returned 200 OK, but could not find the filename in the response.");
+      }
+
+      const resultData: ConvertedFileDetails = {
+        originalName: file.name,
+        originalSize: file.size,
+        outputFilename: targetFilename
+      };
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(resultData));
+      setConvertedFile(resultData);
+
+      toast({ 
+        title: "Success!", 
+        description: "File converted successfully. Ready for download.",
+        className: "bg-green-50 border-green-200"
+      });
+
+    } catch (error: any) {
+      console.error("Conversion Error:", error);
+      
+      // 2. BETTER ERROR DISPLAY
+      // If it's a parsing error (our 'throw new Error'), show that message.
+      // If it's a server error, show the server message.
+      let errorMessage = "Conversion failed.";
+      
+      if (error.response?.data?.error) {
+         errorMessage = error.response.data.error;
+      } else if (error.message) {
+         errorMessage = error.message;
+      }
+
+      toast({ 
+        title: "Error", 
+        description: errorMessage, 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDownload = async () => {
+    const storedData = localStorage.getItem(STORAGE_KEY);
+    let fileDetails: ConvertedFileDetails | null = null;
+
+    if (storedData) fileDetails = JSON.parse(storedData);
+    else if (convertedFile) fileDetails = convertedFile;
+
+    if (!fileDetails || !fileDetails.outputFilename) {
+        toast({ title: "Download Error", description: "No converted file record found.", variant: "destructive" });
+        return;
+    }
+
+    const rawPath = fileDetails.outputFilename;
+    const filenameToDownload = rawPath.split(/[/\\]/).pop();
+
+    if (!filenameToDownload) {
+        toast({ title: "Error", description: "Could not parse filename", variant: "destructive" });
+        return;
+    }
+
+    const token = localStorage.getItem("authToken");
+
+    try {
+      toast({ title: "Download Started", description: "Fetching your Excel file..." });
+
+      const response = await axiosInstance.get(`/pdf/download/${filenameToDownload}`, {
+        headers: { 'Authorization': token ? `${token}` : '' },
+        responseType: "blob",
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", filenameToDownload);
+      document.body.appendChild(link);
+      link.click();
+      
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast({ title: "Download Complete", description: "File saved to your device." });
+
+    } catch (error) {
+      console.error("Download Error:", error);
+      toast({ title: "Download Failed", description: "Could not download the file.", variant: "destructive" });
+    }
+  };
+
+  const handleReset = () => {
+    setFile(null);
+    setConvertedFile(null);
+    localStorage.removeItem(STORAGE_KEY);
+    
+    const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+    if (fileInput) fileInput.value = '';
   };
 
   return (
@@ -68,79 +237,124 @@ export default function PDFToExcel() {
               </p>
             </div>
 
-            {/* === HOW IT WORKS SECTION === */}
-            <div className="space-y-8 py-6">
-              <h2 className="text-2xl font-bold text-center text-slate-800">How it works</h2>
-              <div className="relative">
-                <div className="absolute left-0 right-0 top-6 h-0.5 border-t-2 border-dashed border-slate-300 -z-10 hidden md:block" />
-                <div className="flex flex-col md:flex-row gap-6 justify-between">
-                  {[
-                    { step: 1, title: "Upload PDF", desc: "Select file to extract tables" },
-                    { step: 2, title: "Convert", desc: "Process tables to Excel" },
-                    { step: 3, title: "Download", desc: "Get your .xlsx file" }
-                  ].map((item) => (
-                    <div key={item.step} className="flex flex-col items-center text-center flex-1">
-                       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white border-2 border-orange-200 text-orange-600 font-bold text-lg flex-shrink-0 z-10 shadow-lg">
-                        {item.step}
-                      </div>
-                      <h4 className="font-semibold mb-1 mt-3 text-slate-900">{item.title}</h4>
-                      <p className="text-sm text-slate-500 px-2">{item.desc}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Upload Section */}
+                
                 <div className="lg:col-span-2">
-                  <Card className="bg-white/80 backdrop-blur-md shadow-xl border border-slate-200 h-full">
-                    <CardHeader>
-                      <CardTitle className="text-slate-900">Upload PDF File</CardTitle>
-                      <CardDescription className="text-slate-500">
-                        Select a PDF file to extract tables to Excel
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                      <div className="border-2 border-dashed rounded-xl p-12 text-center border-slate-300 hover:border-orange-500 transition-colors bg-slate-50">
-                        <Upload className="mx-auto h-12 w-12 text-slate-400 mb-4" />
-                        <label htmlFor="file-upload" className="cursor-pointer">
-                          <span className="text-orange-600 font-semibold hover:text-orange-500 transition-colors">Choose file</span>
-                          {" "}<span className="text-slate-500">or drag and drop</span>
-                          <input
-                            id="file-upload"
-                            type="file"
-                            accept=".pdf"
-                            className="hidden"
-                            onChange={handleFileSelect}
-                          />
-                        </label>
-                        <p className="text-sm text-slate-500 mt-2">PDF files only</p>
-                      </div>
-
-                      {file && (
-                        <div className="p-4 rounded-xl border bg-white border-orange-200 shadow-sm">
-                          <p className="font-medium text-slate-900">Selected: {file.name}</p>
-                          <p className="text-sm text-slate-500">
-                            Size: {(file.size / (1024 * 1024)).toFixed(2)} MB
-                          </p>
+                  
+                  {!convertedFile ? (
+                    <Card className="bg-white/80 backdrop-blur-md shadow-xl border border-slate-200 h-full">
+                      <CardHeader>
+                        <CardTitle className="text-slate-900">Upload PDF File</CardTitle>
+                        <CardDescription className="text-slate-500">
+                          Select a PDF file to extract tables to Excel
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        <div className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors bg-slate-50 ${isLoading ? 'opacity-50 pointer-events-none border-slate-300' : 'border-slate-300 hover:border-orange-500'}`}>
+                          <Upload className="mx-auto h-12 w-12 text-slate-400 mb-4" />
+                          <label htmlFor="file-upload" className="cursor-pointer">
+                            <span className="text-orange-600 font-semibold hover:text-orange-500 transition-colors">Choose file</span>
+                            {" "}<span className="text-slate-500">or drag and drop</span>
+                            <input
+                              id="file-upload"
+                              type="file"
+                              accept=".pdf"
+                              className="hidden"
+                              onChange={handleFileSelect}
+                              disabled={isLoading}
+                            />
+                          </label>
+                          <p className="text-sm text-slate-500 mt-2">PDF files only</p>
                         </div>
-                      )}
 
-                      <Button
-                        onClick={handleConvert}
-                        disabled={!file}
-                        className="w-full bg-orange-600 hover:bg-orange-700 text-white text-base py-6 rounded-xl font-semibold transition-colors"
-                      >
-                        <FileSpreadsheet className="mr-2 h-5 w-5" />
-                        Convert to Excel
-                      </Button>
-                    </CardContent>
-                  </Card>
+                        {file && (
+                          <div className="p-4 rounded-xl border bg-white border-orange-200 shadow-sm flex justify-between items-center">
+                            <div>
+                              <p className="font-medium text-slate-900">{file.name}</p>
+                              <p className="text-sm text-slate-500">
+                                Size: {formatBytes(file.size)}
+                              </p>
+                            </div>
+                            <Button variant="ghost" size="sm" onClick={() => setFile(null)} disabled={isLoading} className="text-slate-400 hover:text-red-500">
+                                Remove
+                            </Button>
+                          </div>
+                        )}
+
+                        <Button
+                          onClick={handleConvert}
+                          disabled={!file || isLoading}
+                          className="w-full bg-orange-600 hover:bg-orange-700 text-white text-base py-6 rounded-xl font-semibold transition-colors disabled:opacity-70"
+                        >
+                          {isLoading ? (
+                            <>
+                              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                              Converting...
+                            </>
+                          ) : (
+                            <>
+                              <FileSpreadsheet className="mr-2 h-5 w-5" />
+                              Convert to Excel
+                            </>
+                          )}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    
+                    <Card className="bg-emerald-50 backdrop-blur-md shadow-xl border border-emerald-200 h-full relative overflow-hidden">
+                       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-500 to-emerald-400" />
+                       <CardHeader>
+                        <div className="flex items-center gap-3 mb-2">
+                          <CheckCircle className="h-6 w-6 text-emerald-600" />
+                          <CardTitle className="text-emerald-900">Conversion Complete!</CardTitle>
+                        </div>
+                        <CardDescription className="text-emerald-700">
+                          Your PDF tables have been successfully extracted to Excel.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        
+                        <div className="bg-white/60 rounded-xl p-6 border border-emerald-100 space-y-4">
+                           <div className="flex items-center justify-between p-3 bg-emerald-100/50 rounded-lg">
+                            <span className="text-emerald-700 text-sm">Original File</span>
+                            <span className="text-emerald-900 font-mono text-sm truncate max-w-[150px] sm:max-w-[300px]">
+                              {convertedFile.originalName}
+                            </span>
+                          </div>
+                           <div className="flex items-center justify-between p-3 bg-emerald-100/50 rounded-lg">
+                            <span className="text-emerald-700 text-sm">Original Size</span>
+                            <span className="text-emerald-900 font-mono text-sm">
+                              {formatBytes(convertedFile.originalSize)}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row gap-4">
+                           <Button 
+                              onClick={handleDownload} 
+                              className="flex-1 bg-green-600 hover:bg-green-700 text-white py-6 rounded-xl font-semibold shadow-lg shadow-green-900/10 transition-all hover:scale-[1.02]"
+                            >
+                              <Download className="mr-2 h-5 w-5" />
+                              Download Excel
+                           </Button>
+                           <Button 
+                              variant="outline" 
+                              onClick={handleReset} 
+                              className="bg-white border-slate-300 text-slate-700 hover:bg-slate-100 py-6 rounded-xl"
+                            >
+                              <RefreshCw className="mr-2 h-4 w-4" />
+                              Convert Another
+                           </Button>
+                        </div>
+
+                      </CardContent>
+                    </Card>
+                  )}
                 </div>
 
                 {/* Info Sidebar */}
-                <div className="lg:col-span-1">
+                <div className={`lg:col-span-1 transition-opacity duration-300 ${convertedFile ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
                   <Card className="bg-white/80 backdrop-blur-md shadow-xl border border-slate-200 h-full">
                     <CardHeader>
                       <CardTitle className="text-slate-900">Why convert?</CardTitle>

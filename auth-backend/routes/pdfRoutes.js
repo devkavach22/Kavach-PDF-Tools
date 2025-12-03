@@ -16,6 +16,8 @@ import {wordToPdf} from "../controllers/pdf/wordToPdf.js";
 import {unlockPdf} from "../controllers/pdf/unlockPdf.js";
 import {rotatePdf} from "../controllers/pdf/rotatePdf.js";
 import { downloadGeneratedFile } from "../controllers/pdf/downloadGeneratedFile.js";
+import { optimizePdf } from "../controllers/pdf/optimizePdf.js";
+import  { editPdf }  from "../controllers/pdf/editPdf.js";
 // import { Router } from "express";
 // import { split } from "postcss/lib/list";
 
@@ -27,27 +29,40 @@ router.post("/pdf-to-word",auth,upload.single("file"),pdfToWord);
 
 router.post("/pdf-to-excel",auth,upload.single("file"),pdfToExcel);
 
-router.post("/pdf-sign",auth,upload.array("files"),pdfSignature);
+router.post(
+    "/pdf-sign",
+    auth,
+    upload.fields([
+        { name: "pdf", maxCount: 1 },
+        { name: "signature", maxCount: 1 }
+    ]),
+    pdfSignature
+);
 
-router.post("/pdf-to-image",auth,upload.array("files"),pdfToImage);
 
-router.post("/image-to-pdf",auth,upload.array("files"),imageToPdf);
+router.post("/pdf-to-image",auth,upload.single("file"),pdfToImage);
+
+router.post("/image-to-pdf",auth,upload.array("files",20),imageToPdf);
 
 router.post("/split-pdf",auth,upload.single("file"),splitPdf);
 
 router.post("/compress-pdf",auth,upload.array("files",20),compressPdf);
 
-router.post("/pdf-to-ppt",auth,upload.array("files"),pdfToPpt);
+router.post("/pdf-to-ppt",auth,upload.single("file"),pdfToPpt);
 
-router.post("/watermark-pdf",auth,upload.array("files"),watermarkPdf);
+router.post("/watermark-pdf",auth,upload.single("file"),watermarkPdf);
 
-router.post("/protect-pdf",auth,upload.array("files"),protectPdf);
+router.post("/protect-pdf",auth,upload.single("file"),protectPdf);
 
-router.post("/word-to-pdf",auth,upload.array("files"),wordToPdf);
+router.post("/word-to-pdf",auth,upload.array("files",20),wordToPdf);
 
-router.post("/unlock-pdf",auth,upload.array("files"),unlockPdf);
+router.post("/unlock-pdf",auth,upload.single("file"),unlockPdf);
 
-router.post("/rotate-pdf",auth,upload.array("files"),rotatePdf);
+router.post("/rotate-pdf",auth,upload.single("file"),rotatePdf);
+
+router.post("/optimize-pdf",auth,upload.single("file"),optimizePdf);
+
+router.post("/edit-pdf",auth,upload.single("file"),editPdf);
 
 router.get("/download/:filename",auth,downloadGeneratedFile);
 

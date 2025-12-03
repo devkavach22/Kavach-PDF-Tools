@@ -1,134 +1,108 @@
-// controllers/pdf/pdfSignature.js
 import fs from "fs";
 import path from "path";
-import { PDFDocument, StandardFonts, rgb, degrees } from "pdf-lib";
-import sharp from "sharp";
+import { execFile } from "child_process";
+import pkg from "uuid";
 import { OUTPUT_DIR, removeFiles } from "../../utils/fileUtils.js";
 
-/**
- * POST /api/pdf/pdf-signature
- * upload.fields([{name:'file',maxCount:1},{name:'signature',maxCount:1}])
- *
- * Body params:
- *  - pages: "all" or "1,3,5-7"
- *  - position: "bottom-right"|"bottom-left"|"top-right"|"center"|...
- *  - scale: fraction of page width (0.15 default)
- *  - signatureText: text fallback
- *  - fontSize: number
- */
+const { v4: uuid } = pkg;
 
-function parsePagesSpec(spec, totalPages) {
-  if (!spec || spec === "all") return Array.from({ length: totalPages }, (_, i) => i);
-  const pages = new Set();
-  for (const part of spec.split(",")) {
-    if (part.includes("-")) {
-      const [s, e] = part.split("-");
-      const start = Math.max(1, parseInt(s));
-      const end = Math.min(totalPages, parseInt(e));
-      for (let i = start; i <= end; i++) pages.add(i - 1);
-    } else {
-      const idx = parseInt(part);
-      if (!isNaN(idx)) pages.add(idx - 1);
-    }
-  }
-  return Array.from(pages).sort((a, b) => a - b);
+// Ensure output directory exists
+if (!fs.existsSync(OUTPUT_DIR)) {
+    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+}
+
+// Detect available Python executable
+function detectPython() {
+    return new Promise((resolve) => {
+        execFile("python3", ["--version"], (err) => {
+            if (!err) return resolve("python3");
+
+            execFile("python", ["--version"], (err2) => {
+                if (!err2) return resolve("python");
+                resolve(null);
+            });
+        });
+    });
 }
 
 export const pdfSignature = async (req, res) => {
-  try {
-    const files = req.files || {};
-    const pdfFile = (req.file) ? req.file : (files.file ? files.file[0] : null);
-    const sigFile = files.signature ? files.signature[0] : null;
+    try {
+        // Retrieve uploaded files
+        const pdfFile = req.files?.pdf?.[0];
+        const signatureFile = req.files?.signature?.[0];
 
-    if (!pdfFile) return res.status(400).json({ error: "Upload PDF as 'file'." });
-
-    const {
-      pages = "all",
-      position = "bottom-right",
-      scale = 0.18,
-      signatureText = "Signed",
-      fontSize = 36,
-      rotate = 0
-    } = req.body;
-
-    const pdfBytes = fs.readFileSync(pdfFile.path);
-    const pdfDoc = await PDFDocument.load(pdfBytes);
-    const totalPages = pdfDoc.getPageCount();
-    const pageIndices = parsePagesSpec(pages, totalPages);
-    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-
-    let sigImageEmbed = null;
-    if (sigFile) {
-      const imgBuf = fs.readFileSync(sigFile.path);
-      const pngBuf = await sharp(imgBuf).png().toBuffer();
-      sigImageEmbed = await pdfDoc.embedPng(pngBuf);
-    }
-
-    for (const idx of pageIndices) {
-      const page = pdfDoc.getPage(idx);
-      const { width, height } = page.getSize();
-
-      if (sigImageEmbed) {
-        const targetWidth = Math.max(30, width * parseFloat(scale));
-        const ratio = sigImageEmbed.height / sigImageEmbed.width;
-        const targetHeight = targetWidth * ratio;
-
-        let x, y;
-        switch (position) {
-          case "top-left":
-            x = 20; y = height - targetHeight - 20; break;
-          case "top-right":
-            x = width - targetWidth - 20; y = height - targetHeight - 20; break;
-          case "center":
-            x = (width - targetWidth) / 2; y = (height - targetHeight) / 2; break;
-          case "bottom-left":
-            x = 20; y = 20; break;
-          case "bottom-right":
-          default:
-            x = width - targetWidth - 20; y = 20;
+        if (!pdfFile || !signatureFile) {
+            return res.status(400).json({
+                error: "Both 'pdf' and 'signature' files are required."
+            });
         }
 
-        page.drawImage(sigImageEmbed, {
-          x, y, width: targetWidth, height: targetHeight, rotate: degrees(parseFloat(rotate))
+        const { pages = "all", position = "bottom-right", scale = "1" } = req.body;
+
+        const pythonExec = await detectPython();
+        if (!pythonExec) {
+            return res.status(500).json({ error: "Python not found. Install Python 3." });
+        }
+
+        // Prepare output path
+        const outputName = `signed_${Date.now()}_${uuid()}.pdf`;
+        const outputPath = path.join(OUTPUT_DIR, outputName);
+
+        // Path to script
+        const pythonScript = path.join(process.cwd(), "pdf_signer.py");
+
+        if (!fs.existsSync(pythonScript)) {
+            return res.status(500).json({ error: "Python script pdf_signer.py not found." });
+        }
+
+        const args = [
+            pythonScript,
+            pdfFile.path,
+            signatureFile.path,
+            outputPath,
+            pages,
+            position,
+            scale
+        ];
+
+        // Execute Python script
+        execFile(pythonExec, args, (err, stdout, stderr) => {
+            console.log("Python stdout:", stdout);
+            console.log("Python stderr:", stderr);
+
+            if (err) {
+                return res.status(500).json({
+                    error: "PDF signing failed",
+                    details: stderr || err.message
+                });
+            }
+
+            if (!fs.existsSync(outputPath)) {
+                return res.status(500).json({
+                    error: "Signed PDF was not generated."
+                });
+            }
+
+            // Remove uploaded temp files
+            removeFiles([pdfFile.path, signatureFile.path]);
+
+            return res.json({
+                message: "PDF signed successfully.",
+                file: {
+                    originalPdf: pdfFile.originalname,
+                    signatureImage: signatureFile.originalname,
+                    outputFile: `/outputs/${outputName}`,
+                    pages,
+                    position,
+                    scale,
+                }
+            });
         });
-      } else {
-        // text signature
-        const size = parseFloat(fontSize);
-        const textWidth = font.widthOfTextAtSize(signatureText, size);
-        const textHeight = size;
 
-        let x, y;
-        switch (position) {
-          case "top-left":
-            x = 20; y = height - textHeight - 20; break;
-          case "top-right":
-            x = width - textWidth - 20; y = height - textHeight - 20; break;
-          case "center":
-            x = (width - textWidth) / 2; y = (height - textHeight) / 2; break;
-          case "bottom-left":
-            x = 20; y = 20; break;
-          case "bottom-right":
-          default:
-            x = width - textWidth - 20; y = 20;
-        }
-
-        page.drawText(signatureText, { x, y, size, font, color: rgb(0,0,0), rotate: degrees(parseFloat(rotate)) });
-      }
+    } catch (error) {
+        console.error("pdfSignature error:", error);
+        return res.status(500).json({
+            error: "pdfSignature failed: " + error.message
+        });
     }
-
-    const outName = `${path.parse(pdfFile.originalname).name}_signed_${Date.now()}.pdf`;
-    const outPath = path.join(OUTPUT_DIR, outName);
-    const outBytes = await pdfDoc.save();
-    fs.writeFileSync(outPath, outBytes);
-
-    // cleanup
-    const toRemove = [pdfFile.path];
-    if (sigFile) toRemove.push(sigFile.path);
-    removeFiles(toRemove);
-
-    return res.download(outPath, outName);
-  } catch (err) {
-    console.error("pdfSignature error:", err);
-    return res.status(500).json({ error: "pdfSignature failed: " + (err.message || err) });
-  }
 };

@@ -1,30 +1,27 @@
-import { useEffect, useState } from "react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { motion } from "framer-motion";
-import Particles, { initParticlesEngine } from "@tsparticles/react";
-import { loadSlim } from "tsparticles-slim";
 import { Cloud, HardDrive, Database, Slack, Mail } from "lucide-react";
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
 
-const particlesOptions = {
-    fullScreen: { enable: false, zIndex: 0 },
-    background: { color: { value: "transparent" } },
-    fpsLimit: 120,
-    particles: {
-      color: { value: ["#fb923c", "#f87171", "#fbbf24"] },
-      links: { color: "#cbd5e1", distance: 150, enable: true, opacity: 0.2, width: 1 },
-      move: { enable: true, speed: 1, direction: "none", random: true, outModes: { default: "bounce" } },
-      number: { density: { enable: true, area: 800 }, value: 80 },
-      opacity: { value: 0.5 },
-      shape: { type: "circle" },
-      size: { value: { min: 1, max: 3 } },
-    },
-    detectRetina: true,
-  };
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
-const GradientBlob = ({ className }: { className?: string }) => (
-    <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3], rotate: [0, 45, 0] }} transition={{ duration: 10, repeat: Infinity }} className={`absolute rounded-full blur-[90px] filter ${className}`} />
-);
+// --- COMPONENT: GLASS CARD ---
+const GlassCard = ({ children, className = "", onClick }: any) => {
+  return (
+    <motion.div
+      whileHover={{ scale: 1.05 }}
+      onClick={onClick}
+      className={cn("relative overflow-hidden rounded-[32px] border border-orange-100/60 bg-white/60 backdrop-blur-xl shadow-xl shadow-orange-900/5 cursor-pointer group", className)}
+    >
+       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-orange-400/40 to-transparent opacity-50" />
+       {children}
+    </motion.div>
+  );
+};
 
 const integrations = [
     { name: "Google Drive", icon: Cloud, color: "text-blue-600", bg: "bg-blue-50" },
@@ -36,32 +33,48 @@ const integrations = [
 ];
 
 export default function Integrations() {
-  const [init, setInit] = useState(false);
-  useEffect(() => { initParticlesEngine(async (engine) => await loadSlim(engine)).then(() => setInit(true)); }, []);
-
   return (
-    <div className="min-h-screen flex flex-col bg-white text-slate-900 font-sans overflow-x-hidden relative">
-      <div className="fixed inset-0 z-0 pointer-events-none">
-          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.05]" />
-          <GradientBlob className="top-20 right-0 w-[600px] h-[600px] bg-orange-100/60" />
+    <div className="min-h-screen flex flex-col bg-[#FFF8F0] text-slate-900 font-sans overflow-x-hidden relative selection:bg-orange-200 selection:text-orange-900">
+      
+      {/* --- BACKGROUND EFFECTS --- */}
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+        <motion.div 
+            animate={{ scale: [1, 1.2, 1], rotate: [0, 90, 0], opacity: [0.3, 0.5, 0.3] }}
+            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+            className="absolute top-20 right-0 w-[600px] h-[600px] bg-orange-200/50 rounded-full blur-[100px]" 
+        />
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-30 mix-blend-soft-light"></div>
       </div>
-      {init && <div className="absolute inset-0 z-0 opacity-50 pointer-events-none"><Particles id="tsparticles" options={particlesOptions} className="h-full w-full" /></div>}
+
       <div className="relative z-50"><Header /></div>
 
       <main className="relative z-10 pt-32 pb-24 px-6">
         <div className="container max-w-7xl mx-auto text-center">
-           <h1 className="text-5xl font-bold text-slate-900 mb-6">Seamless <span className="text-orange-500">Integrations</span></h1>
-           <p className="text-slate-600 mb-16 max-w-2xl mx-auto">Connect Kavach with the tools you use every day.</p>
+           <motion.h1 
+             initial={{ opacity: 0, y: 20 }}
+             animate={{ opacity: 1, y: 0 }}
+             className="text-5xl md:text-6xl font-black text-slate-900 mb-6"
+           >
+             Seamless <span className="text-orange-600">Integrations</span>
+           </motion.h1>
+           <motion.p 
+             initial={{ opacity: 0, y: 20 }}
+             animate={{ opacity: 1, y: 0 }}
+             transition={{ delay: 0.1 }}
+             className="text-slate-600 mb-16 max-w-2xl mx-auto text-lg font-medium"
+           >
+             Connect Kavach with the tools you use every day.
+           </motion.p>
            
            <div className="grid grid-cols-2 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
               {integrations.map((item, idx) => (
-                 <motion.div key={idx} whileHover={{ scale: 1.05 }} className="p-8 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col items-center justify-center hover:border-orange-200 hover:shadow-lg transition-all group cursor-pointer">
-                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${item.bg} ${item.color} ring-1 ring-slate-100 group-hover:ring-orange-200 transition-all`}>
-                        <item.icon size={32} />
+                 <GlassCard key={idx} className="p-8 flex flex-col items-center justify-center hover:border-orange-200 hover:shadow-orange-500/10">
+                    <div className={`w-20 h-20 rounded-3xl flex items-center justify-center mb-4 ${item.bg} ${item.color} shadow-sm group-hover:scale-110 transition-transform duration-300`}>
+                        <item.icon size={36} />
                     </div>
-                    <h3 className="text-lg font-bold text-slate-800">{item.name}</h3>
-                    <p className="text-xs text-slate-500 mt-2">Connect Account</p>
-                 </motion.div>
+                    <h3 className="text-xl font-bold text-slate-900">{item.name}</h3>
+                    <p className="text-xs font-bold text-orange-500 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">Connect Account</p>
+                 </GlassCard>
               ))}
            </div>
         </div>

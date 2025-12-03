@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import Instance from "@/lib/axiosInstance"; 
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, Upload, Download, X, GripVertical, ArrowLeft } from "lucide-react";
+import { FileText, Upload, Download, X, GripVertical, ArrowLeft, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   DndContext,
@@ -50,14 +51,14 @@ function SortableFileItem({ id, file, removeFile }: { id: string, file: File, re
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center justify-between p-4 rounded-xl border border-slate-200 bg-white shadow-sm hover:bg-slate-50 transition-colors"
+      className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-white shadow-sm hover:bg-slate-50 transition-colors"
     >
       <div className="flex items-center gap-3">
         <button {...listeners} {...attributes} className="cursor-grab text-slate-400 hover:text-orange-600">
            <GripVertical className="h-5 w-5" />
         </button>
         <FileText className="h-5 w-5 text-orange-600" />
-        <span className="font-medium text-slate-900">{file.name}</span>
+        <span className="font-medium text-slate-900 truncate max-w-[200px] sm:max-w-md">{file.name}</span>
       </div>
       <Button
         variant="ghost"
@@ -71,9 +72,9 @@ function SortableFileItem({ id, file, removeFile }: { id: string, file: File, re
   );
 }
 
-
 export default function MergePDF() {
   const [files, setFiles] = useState<SortableFile[]>([]);
+  const [isMerging, setIsMerging] = useState(false);
   const { toast } = useToast();
   const isAuthenticated = true;
   const isAdmin = false;
@@ -111,28 +112,111 @@ export default function MergePDF() {
     }
   };
 
-  const handleMerge = () => {
+  const handleMerge = async () => {
     if (files.length < 2) {
       toast({ title: "Error", description: "Please select at least 2 PDF files to merge", variant: "destructive" });
       return;
     }
-    toast({ title: "Merging PDFs", description: "Your files are being merged..." });
+
+    setIsMerging(true);
+    toast({ title: "Merging PDFs", description: "Processing your files..." });
+
+    try {
+      const formData = new FormData();
+      files.forEach((fileItem) => {
+        formData.append('files', fileItem.file);
+      });
+
+      const token = localStorage.getItem("authToken");
+
+      const response = await Instance.post('/pdf/merge-pdf', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'Authorization': token ? `${token}` : '',
+        }
+      });
+
+      const mergedFileData = response.data.files && response.data.files[0];
+      
+      if (!mergedFileData || !mergedFileData.outputFile) {
+        throw new Error("Could not retrieve merged file info from server.");
+      }
+
+      const rawPath = mergedFileData.outputFile;
+      const filenameToDownload = rawPath.split(/[/\\]/).pop();
+
+      if (!filenameToDownload) {
+         throw new Error("Invalid filename received.");
+      }
+
+      toast({ title: "Merge Successful", description: "Downloading your merged PDF..." });
+
+      const downloadResponse = await Instance.get(`/pdf/download/${filenameToDownload}`, {
+        headers: { 'Authorization': token ? `${token}` : '' },
+        responseType: 'blob',
+      });
+
+      const url = window.URL.createObjectURL(new Blob([downloadResponse.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filenameToDownload);
+      document.body.appendChild(link);
+      link.click();
+      
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast({ title: "Complete", description: "Your merged PDF has been downloaded." });
+
+    } catch (error) {
+      console.error("Merge Error:", error);
+      toast({ 
+        title: "Merge Failed", 
+        description: "There was an error merging your files. Please try again.", 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsMerging(false);
+    }
   };
 
   return (
-    <div className="relative flex flex-col min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-orange-100 selection:text-orange-900 overflow-x-hidden">
-      {/* --- AMBIENT BACKGROUND --- */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white via-slate-50 to-slate-100" />
-        <motion.div animate={{ opacity: [0.4, 0.6, 0.4], scale: [1, 1.1, 1], rotate: [0, 5, 0] }} transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }} className="absolute -top-[20%] left-[10%] w-[60vw] h-[60vw] bg-orange-200/40 rounded-full blur-[120px]" />
-        <motion.div animate={{ opacity: [0.3, 0.5, 0.3], scale: [1, 1.2, 1], rotate: [0, -5, 0] }} transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }} className="absolute -bottom-[10%] right-[0%] w-[50vw] h-[50vw] bg-red-200/40 rounded-full blur-[100px]" />
+    <div className="relative flex flex-col min-h-screen bg-white font-sans text-slate-900 selection:bg-orange-200 selection:text-orange-900 overflow-x-hidden">
+      
+       {/* --- ENHANCED AMBIENT BACKGROUND --- */}
+       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+        <div className="absolute inset-0 bg-white" />
+        
+        {/* Top-Left Vibrant Glow */}
+        <motion.div 
+          animate={{ opacity: [0.4, 0.6, 0.4], scale: [1, 1.2, 1], rotate: [0, 10, 0] }} 
+          transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }} 
+          className="absolute -top-[10%] -left-[10%] w-[50vw] h-[50vw] bg-gradient-to-br from-orange-300/40 via-amber-200/40 to-transparent rounded-full blur-[100px]" 
+        />
+        
+        {/* Bottom-Right Warm Glow */}
+        <motion.div 
+          animate={{ opacity: [0.3, 0.5, 0.3], scale: [1, 1.3, 1], rotate: [0, -10, 0] }} 
+          transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }} 
+          className="absolute -bottom-[15%] -right-[5%] w-[50vw] h-[50vw] bg-gradient-to-tl from-red-200/40 via-orange-200/40 to-transparent rounded-full blur-[100px]" 
+        />
+        
+        {/* Center/Top Title Highlight Glow (New) */}
+        <motion.div
+           animate={{ opacity: [0.2, 0.4, 0.2], scale: [0.9, 1.1, 0.9] }}
+           transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+           className="absolute top-[5%] left-[20%] right-[20%] h-[40vh] bg-gradient-to-b from-orange-100/60 via-amber-100/30 to-transparent rounded-full blur-[80px]"
+        />
+
+        {/* Noise overlay for texture */}
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-multiply" />
       </div>
 
       <div className="relative z-10 flex flex-col min-h-screen">
         <Header isAuthenticated={isAuthenticated} isAdmin={isAdmin} onLogout={() => console.log("Logout")} />
         
-        <main className="flex-1 flex-col py-16">
+        {/* Main Content with Spacing Fixes */}
+        <main className="flex-1 flex-col pt-32 pb-20">
           <div className="max-w-7xl mx-auto space-y-6 px-4 sm:px-6 lg:px-8"> 
             
              <Link
@@ -143,10 +227,7 @@ export default function MergePDF() {
               <span className="text-slate-600">Back to Tools</span>
             </Link>
 
-            <div className="text-center space-y-3">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-100 border border-orange-200 animate-float">
-                <FileText className="h-8 w-8 text-orange-500" />
-              </div>
+            <div className="text-center space-y-4 relative z-10">
               <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 via-red-500 to-amber-500 animate-gradient-x">Merge PDF Files</span>
               </h1>
@@ -156,40 +237,41 @@ export default function MergePDF() {
             </div>
 
             {/* Steps */}
-            <div className="space-y-8 py-6">
-               <div className="relative">
-                <div className="absolute left-0 right-0 top-6 h-0.5 border-t-2 border-dashed border-slate-300 -z-10 hidden md:block" />
-                <div className="flex flex-col md:flex-row gap-6 justify-between">
+            <div className="space-y-6 py-2">
+               <div className="relative max-w-4xl mx-auto">
+                <div className="absolute left-0 right-0 top-5 h-0.5 border-t-2 border-dashed border-slate-200 -z-10 hidden md:block" />
+                <div className="flex flex-col md:flex-row gap-6 justify-between px-4">
                    {[
-                    { step: 1, title: "Upload", desc: "Select multiple files" },
-                    { step: 2, title: "Arrange", desc: "Drag and drop order" },
-                    { step: 3, title: "Merge", desc: "Download combined PDF" }
+                    { step: 1, title: "Upload", desc: "Select PDF files" },
+                    { step: 2, title: "Arrange", desc: "Drag to order" },
+                    { step: 3, title: "Merge", desc: "Download PDF" }
                   ].map((item) => (
                     <div key={item.step} className="flex flex-col items-center text-center flex-1">
-                       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white border-2 border-orange-200 text-orange-600 font-bold text-lg flex-shrink-0 z-10 shadow-lg">
+                       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white border-2 border-orange-200 text-orange-600 font-bold text-base flex-shrink-0 z-10 shadow-sm">
                         {item.step}
                       </div>
-                      <h4 className="font-semibold mb-1 mt-3 text-slate-900">{item.title}</h4>
-                      <p className="text-sm text-slate-500 px-2">{item.desc}</p>
+                      <h4 className="font-semibold mb-0.5 mt-2 text-slate-900 text-sm">{item.title}</h4>
+                      <p className="text-xs text-slate-500">{item.desc}</p>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
 
-            <Card className="bg-white/80 backdrop-blur-md shadow-xl border border-slate-200 max-w-3xl mx-auto">
-              <CardHeader>
-                <CardTitle className="text-slate-900">Upload & Arrange</CardTitle>
+            {/* Upload Card */}
+            <Card className="bg-white/80 backdrop-blur-md shadow-xl border border-slate-200 max-w-5xl mx-auto">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-slate-900 text-xl">Upload & Arrange</CardTitle>
                 <CardDescription className="text-slate-500">
                   Select multiple PDF files to merge them into a single document
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                 <div className="border-2 border-dashed rounded-xl p-8 text-center border-slate-300 hover:border-orange-500 transition-colors bg-slate-50">
+                 <div className={`border-2 border-dashed rounded-xl p-10 text-center transition-colors bg-slate-50/50 ${isMerging ? 'opacity-50 pointer-events-none border-slate-300' : 'border-slate-300 hover:border-orange-500 hover:bg-orange-50/10'}`}>
                   <Upload className="mx-auto h-12 w-12 text-slate-400 mb-4" />
                   <label htmlFor="file-upload" className="cursor-pointer">
-                    <span className="text-orange-600 font-semibold hover:text-orange-500 transition-colors">Choose files</span>
-                    {" "}<span className="text-slate-500">or drag and drop</span>
+                    <span className="text-orange-600 font-semibold hover:text-orange-500 transition-colors text-lg">Choose files</span>
+                    {" "}<span className="text-slate-500 text-lg">or drag and drop</span>
                     <input
                       id="file-upload"
                       type="file"
@@ -197,6 +279,7 @@ export default function MergePDF() {
                       multiple
                       className="hidden"
                       onChange={handleFileSelect}
+                      disabled={isMerging}
                     />
                   </label>
                   <p className="text-sm text-slate-500 mt-2">PDF files only</p>
@@ -213,8 +296,9 @@ export default function MergePDF() {
                       <SortableContext
                         items={files.map(f => f.id)}
                         strategy={verticalListSortingStrategy}
+                        disabled={isMerging}
                       >
-                        <div className="space-y-3">
+                        <div className="space-y-2">
                           {files.map((fileItem) => (
                             <SortableFileItem
                               key={fileItem.id}
@@ -231,11 +315,20 @@ export default function MergePDF() {
 
                 <Button 
                   onClick={handleMerge} 
-                  disabled={files.length < 2}
-                  className="w-full bg-orange-600 hover:bg-orange-700 text-lg py-6 rounded-xl font-semibold transition-colors text-white"
+                  disabled={files.length < 2 || isMerging}
+                  className="w-full bg-orange-600 hover:bg-orange-700 text-lg py-4 h-auto rounded-xl font-semibold transition-colors text-white disabled:opacity-70 shadow-lg shadow-orange-500/20"
                 >
-                  <Download className="mr-2 h-5 w-5" />
-                  Merge PDF Files
+                  {isMerging ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Merging & Downloading...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="mr-2 h-5 w-5" />
+                      Merge PDF Files
+                    </>
+                  )}
                 </Button>
               </CardContent>
             </Card>

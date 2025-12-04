@@ -3,18 +3,18 @@ import {
   User,
   LogOut,
   LayoutDashboard,
-  FileText,
+  // FileText, // Removed as Tools is removed
   FolderOpen,
   Settings,
   Users,
   Menu,
   X,
   Sparkles,
-  Zap,         
-  CreditCard,  
-  Code,        
-  Blocks,      
-  Home         
+  Zap,
+  CreditCard,
+  Code,
+  Blocks,
+  Home
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,7 +28,7 @@ import Kavachlogo from "@/assets/KavachLogo.png";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useCallback } from "react";
-import Instance from "@/lib/axiosInstance"; 
+import Instance from "@/lib/axiosInstance";
 
 interface HeaderProps {
   isAuthenticated?: boolean;
@@ -55,44 +55,35 @@ export const Header = ({
   }, []);
 
   // --- LOGOUT HANDLER ---
-  // Memoized to be used inside the interceptor effect safely
   const handleLogout = useCallback(async () => {
-    // 1. Retrieve the token from storage (Adjust 'token' to 'accessToken' if your app uses that key)
-    const token = localStorage.getItem("token"); 
+    const token = localStorage.getItem("token");
 
     try {
       if (token) {
-        // 2. Pass the Authorization token in the header
-        await Instance.post( 
-          "/auth/logout", 
-          {}, 
+        await Instance.post(
+          "/auth/logout",
+          {},
           {
             headers: {
-              // Standard JWT format. If your API expects just the token without 'Bearer', remove 'Bearer '
-              Authorization: `${token}` 
+              Authorization: `${token}`
             }
           }
         );
       }
     } catch (err) {
       console.error("Logout API call failed:", err);
-      // We do not alert here because if the token is expired, the API WILL fail, 
-      // but we still want to clear local storage and redirect.
     } finally {
-      // 3. Always clear storage and redirect, regardless of API success/failure
       localStorage.removeItem("token");
-      localStorage.removeItem("user"); // Clear any other stored user data
+      localStorage.removeItem("user");
       navigate("/auth");
     }
   }, [navigate]);
 
   // --- AUTO LOGOUT ON TOKEN EXPIRY ---
   useEffect(() => {
-    // Set up an interceptor to watch for 401 (Unauthorized) errors globally
     const interceptor = Instance.interceptors.response.use(
       (response) => response,
       (error) => {
-        // If the error status is 401, it means the token is expired or invalid
         if (error.response && error.response.status === 401) {
           handleLogout();
         }
@@ -100,7 +91,6 @@ export const Header = ({
       }
     );
 
-    // Clean up the interceptor when component unmounts
     return () => {
       Instance.interceptors.response.eject(interceptor);
     };
@@ -115,9 +105,10 @@ export const Header = ({
     { title: "Integration", icon: Blocks, href: "/integration" },
   ];
 
+  // UPDATED: Removed Tools, Added AI Search
   const userMenuItems = [
     { title: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
-    { title: "Tools", icon: FileText, href: "/tools" },
+    { title: "AI Search", icon: Sparkles, href: "/ai-search" }, 
     { title: "Reports", icon: FolderOpen, href: "/files" },
   ];
 
@@ -146,7 +137,7 @@ export const Header = ({
       className={cn(
         "fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b",
         scrolled
-          ? "bg-white/70 backdrop-blur-xl border-orange-100 py-3 shadow-sm shadow-orange-900/5" 
+          ? "bg-white/70 backdrop-blur-xl border-orange-100 py-3 shadow-sm shadow-orange-900/5"
           : "bg-transparent border-transparent py-5"
       )}
     >
@@ -162,7 +153,6 @@ export const Header = ({
 
         {/* Desktop Navigation */}
         <div className="hidden md:block absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-          {/* Theme Update: Glassmorphism with orange border */}
           <nav className="flex items-center p-1.5 rounded-full bg-white/60 border border-orange-100/60 backdrop-blur-xl shadow-sm">
             {menuItems.map((item) => (
               <Link

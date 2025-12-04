@@ -39,6 +39,7 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsServices from "./pages/TermsServices";
 import Security from "./pages/Security";
 import Pricing from "./pages/Pricing";
+import AISearch from "./pages/AISearchPage";
 
 
 const queryClient = new QueryClient();
@@ -86,6 +87,7 @@ const App = () => (
           <Route path="/terms-services" element={<TermsServices />} />
           <Route path="/security" element={<Security />} />
           <Route path="/pricing" element={<Pricing />} />
+          <Route path="/ai-search" element={<AISearch />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

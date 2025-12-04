@@ -5,10 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, Mail, KeyRound, AlertTriangle, Send, Loader2, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import axios from "axios";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import Kavachlogo from "@/assets/KavachLogo.png";
+
+// Import your custom Axios Instance
+// Make sure the path matches where you saved axiosInstance.ts
+import Instance from "@/lib/axiosInstance"; 
 
 // --- UTILS ---
 function cn(...inputs: ClassValue[]) {
@@ -65,20 +68,16 @@ export default function ForgotPassword() {
     try {
       setIsLoading(true);
       
-      // API call to check email and send OTP
-      // Replace with your actual endpoint
-      const API_URL = 'http://localhost:5000/api/auth/forgot-password';
-      
-      // For demonstration/testing, assumes success:
-      // await axios.post(API_URL, { email });
-      
-      // Simulating API delay and logic
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // If using real API, catch 404 here for "Email not found"
+      // API Call: POST /auth/forgot-password
+      // BaseURL is already /api, so we append /auth/forgot-password
+      const response = await Instance.post("/auth/forgot-password", { 
+        email: email 
+      });
       
       setIsLoading(false);
-      setSuccessMsg(`OTP sent to ${email}`);
+      setSuccessMsg(response.data.message || `OTP sent to ${email}`);
+      
+      // Transition to OTP step after short delay
       setTimeout(() => {
         setStep("otp");
         setSuccessMsg("");
@@ -86,7 +85,8 @@ export default function ForgotPassword() {
 
     } catch (err: any) {
       setIsLoading(false);
-      // Handle "Email not registered" specifically
+      console.error("Forgot Password Error:", err);
+
       if (err.response?.status === 404) {
         setError("This email is not registered with us.");
       } else {
@@ -108,20 +108,31 @@ export default function ForgotPassword() {
     try {
       setIsLoading(true);
 
-      // API call to verify OTP
-      const API_URL = 'http://localhost:5000/api/auth/verify-otp';
-      
-      // await axios.post(API_URL, { email, otp });
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulation
+      // API Call: PUT /auth/verify-otp
+      // Note: Using PUT as per your provided snippet
+      const response = await Instance.put("/auth/verify-otp", { 
+        email: email, 
+        otp: otp 
+      });
 
       setIsLoading(false);
       
-      // Navigate to Reset Password page with email in state
-      navigate("/reset-password", { state: { email: email, verified: true } });
+      // Navigate to Reset Password page
+      // Passing email and verified status state to the next page
+      navigate("/reset-password", { 
+        state: { 
+          email: email, 
+          verified: true,
+          // Optional: If backend returns a temp token for reset, pass it here
+          // token: response.data.token 
+        } 
+      });
 
     } catch (err: any) {
       setIsLoading(false);
-      setError("Invalid OTP. Please try again.");
+      console.error("Verify OTP Error:", err);
+      
+      setError(err.response?.data?.message || "Invalid OTP. Please try again.");
     }
   };
 
@@ -240,7 +251,7 @@ export default function ForgotPassword() {
                     />
                   </div>
                   <div className="flex justify-end">
-                     <button type="button" onClick={() => { setStep("email"); setError(""); }} className="text-xs font-bold text-orange-600 hover:text-orange-700 hover:underline">
+                     <button type="button" onClick={() => { setStep("email"); setError(""); setOtp(""); }} className="text-xs font-bold text-orange-600 hover:text-orange-700 hover:underline">
                         Change Email?
                      </button>
                   </div>

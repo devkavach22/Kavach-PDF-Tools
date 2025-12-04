@@ -113,21 +113,42 @@ export const verifyOtp = async (req, res) => {
 };
 
 // ====================== RESET PASSWORD =======================
+// ====================== RESET PASSWORD =======================
 export const resetPassword = async (req, res) => {
-    const { email, newPassword } = req.body;
+    try {
+        // 1. Accept confirmPassword from the request body
+        const { email, newPassword, confirmPassword } = req.body;
 
-    const user = await User.findOne({ email });
+        // 2. Validate that both fields are present
+        if (!newPassword || !confirmPassword) {
+            return res.status(400).json({ error: "Both new password and confirm password are required." });
+        }
 
-    if (!user)
-        return res.status(400).json({ error: "User not found with this email." });
+        // 3. Validate that passwords match
+        if (newPassword !== confirmPassword) {
+            return res.status(400).json({ error: "Passwords do not match." });
+        }
 
-    user.password = await bcrypt.hash(newPassword, 10);
-    user.otp = undefined;
-    user.otpExpires = undefined;
+        const user = await User.findOne({ email });
 
-    await user.save();
+        if (!user) {
+            return res.status(404).json({ error: "User not found with this email." });
+        }
 
-    res.json({ message: "Password successfully reset. Please login again!" });
+        // 4. Hash the new password and save
+        user.password = await bcrypt.hash(newPassword, 10);
+        
+        // Clear OTP fields after successful reset
+        user.otp = undefined;
+        user.otpExpires = undefined;
+
+        await user.save();
+
+        res.json({ message: "Password successfully reset. Please login again!" });
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 };
 
 // ========================= LOGOUT =============================

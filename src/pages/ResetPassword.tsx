@@ -5,10 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, LockKeyhole, CheckCircle2, ShieldCheck, Check, Eye, EyeOff, Lock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import axios from "axios";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import Kavachlogo from "@/assets/KavachLogo.png";
+
+// Import your custom Axios Instance
+import Instance from "@/lib/axiosInstance";
 
 // --- UTILS ---
 function cn(...inputs: ClassValue[]) {
@@ -55,13 +57,13 @@ export default function ResetPassword() {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Security check: If they didn't come from ForgotPassword flow, redirect or handle
+  // Security check: Get email from navigation state
   const email = location.state?.email || ""; 
   
-  // If no email is present in state, you might want to redirect back to forgot-password
+  // Optional: Redirect if no email found in state (security measure)
   useEffect(() => {
     if (!email) {
-      // navigate("/forgot-password"); // Uncomment if strict security is needed
+      // navigate("/forgot-password"); 
     }
   }, [email, navigate]);
 
@@ -121,23 +123,34 @@ export default function ResetPassword() {
 
     if (!isFormValid) return;
 
-    // Use reset-password endpoint since we don't have old password
-    const API_URL = 'http://localhost:5000/api/auth/reset-password';
-
     try {
       setLoading(true);
-      // Payload only contains email and new password (assuming OTP verified on previous screen or token used)
-      const payload = { email, newPassword };
-      await axios.post(API_URL, payload); // Changed to POST often used for resets
+      
+      // Construct payload matching the API snippet exactly
+      // confirmPassword is required by the backend
+      const payload = { 
+        email: email, 
+        newPassword: newPassword,
+        confirmPassword: confirm
+      };
+
+      // Use axiosInstance (Instance)
+      // Base URL is .../api, so we add /auth/reset-password
+      await Instance.post("/auth/reset-password", payload);
       
       setLoading(false);
       setIsSubmitted(true);
+      
+      // Redirect to login after 2 seconds
       setTimeout(() => navigate("/auth"), 2000);
 
     } catch (err: any) {
       setLoading(false);
+      console.error("Reset Password Error:", err);
+      
       let errorMsg = "An unexpected error occurred.";
       if (err.response) {
+        // Handle backend error messages
         errorMsg = err.response.data?.error || err.response.data?.message || `Server Error: ${err.response.status}`;
       } else {
         errorMsg = err.message;
@@ -181,7 +194,6 @@ export default function ResetPassword() {
                 )}
 
                 <form className="space-y-4" onSubmit={handleSubmit}>
-                  {/* Removed Old Password Field */}
                   
                   <div className="space-y-1.5 group">
                     <Label className="text-slate-700 font-bold group-focus-within:text-orange-600 transition-colors ml-1">New Password</Label>

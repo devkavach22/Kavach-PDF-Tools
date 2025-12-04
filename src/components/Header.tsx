@@ -3,7 +3,6 @@ import {
   User,
   LogOut,
   LayoutDashboard,
-  // FileText, // Removed as Tools is removed
   FolderOpen,
   Settings,
   Users,
@@ -14,7 +13,9 @@ import {
   CreditCard,
   Code,
   Blocks,
-  Home
+  Home,
+  History,
+  Wrench // Added for the Tools menu
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -105,10 +106,12 @@ export const Header = ({
     { title: "Integration", icon: Blocks, href: "/integration" },
   ];
 
-  // UPDATED: Removed Tools, Added AI Search
+  // UPDATED: Added "History" and "Tools"
   const userMenuItems = [
     { title: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
     { title: "AI Search", icon: Sparkles, href: "/ai-search" }, 
+    { title: "History", icon: History, href: "/ai-history" },
+    { title: "Tools", icon: Wrench, href: "/tools" }, // New Tools Item added here
     { title: "Reports", icon: FolderOpen, href: "/files" },
   ];
 
@@ -137,7 +140,7 @@ export const Header = ({
       className={cn(
         "fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b",
         scrolled
-          ? "bg-white/70 backdrop-blur-xl border-orange-100 py-3 shadow-sm shadow-orange-900/5"
+          ? "bg-white/80 backdrop-blur-xl border-orange-200 py-3 shadow-sm shadow-orange-900/5"
           : "bg-transparent border-transparent py-5"
       )}
     >
@@ -146,14 +149,14 @@ export const Header = ({
         <Link to="/" className="flex items-center group relative z-50">
           <img
             src={Kavachlogo}
-            className="h-16 w-auto ml-6 object-contain transition-transform duration-300 group-hover:scale-105"
+            className="h-16 w-auto ml-6 object-contain transition-transform duration-300 group-hover:scale-105 drop-shadow-sm"
             alt="Kavach Logo"
           />
         </Link>
 
         {/* Desktop Navigation */}
         <div className="hidden md:block absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-          <nav className="flex items-center p-1.5 rounded-full bg-white/60 border border-orange-100/60 backdrop-blur-xl shadow-sm">
+          <nav className="flex items-center p-1.5 rounded-full bg-white/70 border border-orange-100/60 backdrop-blur-md shadow-lg shadow-orange-500/5">
             {menuItems.map((item) => (
               <Link
                 key={item.href}
@@ -176,7 +179,7 @@ export const Header = ({
                     "relative z-10 flex items-center gap-2 transition-colors duration-200",
                     isActive(item.href)
                       ? "text-white"
-                      : "text-slate-500 group-hover:text-orange-600"
+                      : "text-slate-600 group-hover:text-orange-600"
                   )}
                 >
                   <item.icon className={cn("w-4 h-4", isActive(item.href) ? "text-white" : "text-slate-400 group-hover:text-orange-500")} />
@@ -195,15 +198,18 @@ export const Header = ({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="rounded-full border border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 hover:text-orange-700 hover:shadow-[0_0_15px_rgba(249,115,22,0.3)] transition-all duration-300"
+                  className="rounded-full border border-orange-200 bg-orange-50/50 text-orange-600 hover:bg-orange-100 hover:text-orange-700 hover:shadow-[0_0_15px_rgba(249,115,22,0.3)] transition-all duration-300"
                 >
                   <User className="h-5 w-5" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
-                className="w-56 bg-white/90 border-orange-100 text-slate-700 backdrop-blur-xl p-2 shadow-xl shadow-orange-500/10 rounded-2xl"
+                className="w-56 bg-white/95 border-orange-100 text-slate-700 backdrop-blur-xl p-2 shadow-xl shadow-orange-500/10 rounded-2xl"
               >
+                <div className="px-2 py-1.5 text-sm font-semibold text-orange-800 bg-orange-50/50 rounded-lg mb-1">
+                  My Account
+                </div>
                 <DropdownMenuItem
                   asChild
                   className="focus:bg-orange-50 focus:text-orange-700 cursor-pointer rounded-xl"

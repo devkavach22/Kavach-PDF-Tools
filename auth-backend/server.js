@@ -18,7 +18,11 @@ const MONGO_URL = process.env.MONGO_URL;
 const FRONTEND_URL = process.env.FRONTEND_URL;
 
 const allowedOrigins = [
-    // "http://localhost:8080",        
+    "http://localhost:5173", // For local development
+    "http://localhost:3000", // Alternate local port
+    "https://kavachservices.com", // 👈 ADD YOUR LIVE DOMAIN
+    "https://www.kavachservices.com",
+    "http://localhost:8080",              
     "https://kavach-pdf-tools.onrender.com",   // Local fronten          // Production frontend (domain)
 ];
 

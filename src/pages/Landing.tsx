@@ -378,7 +378,7 @@ export default function Landing() {
       <main className="relative z-10 pt-32 pb-20 flex-grow">
         
         {/* --- HERO SECTION --- */}
-        <section className="relative px-6 py-12 lg:py-24 overflow-visible">
+        <section className="relative px-6 py-8 lg:py-8 overflow-visible">
           <div className="container mx-auto max-w-7xl grid lg:grid-cols-2 gap-16 items-center">
             
             <motion.div 

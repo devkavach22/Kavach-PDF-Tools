@@ -1,5 +1,5 @@
 import express from "express";
-import { register, login, forgotPassword, resetPassword, logout, changePassword } from "../controllers/authController.js";
+import { register, login, forgotPassword, resetPassword, logout, changePassword, verifyOtp } from "../controllers/authController.js";
 import { auth } from "../middlewares/auth.js";
 import { authorize } from "../middlewares/roles.js";
 import Folder from "../models/Folder.js";
@@ -170,6 +170,6 @@ router.get("/files/:folderId", auth, async (req, res) => {
 
 
 router.put("/change-password", changePassword);
-router.put("/verify-otp", changePassword);
+router.put("/verify-otp", verifyOtp);
 
 export default router;

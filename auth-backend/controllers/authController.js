@@ -85,21 +85,27 @@ export const forgotPassword = async (req, res) => {
     return res.json({ message: "OTP has been sent to your registered email." });
 };
 
+
 // ===================== VERIFY OTP ============================
 export const verifyOtp = async (req, res) => {
     try {
         const { email, otp } = req.body;
 
+        // 1. Check if email exists
         const user = await User.findOne({ email });
         if (!user) return res.status(404).json({ error: "User not found" });
 
+        // 2. Check if OTP matches
         if (user.otp !== otp)
             return res.status(400).json({ error: "Invalid OTP" });
 
+        // 3. Check if OTP is expired
         if (user.otpExpires < Date.now())
             return res.status(400).json({ error: "OTP has expired" });
 
-        return res.json({ message: "OTP verified successfully" });
+        // 4. Success Response
+        // The frontend uses this 200 OK to show the "Verified" popup
+        return res.status(200).json({ message: "OTP verified successfully" });
 
     } catch (err) {
         return res.status(500).json({ error: err.message });

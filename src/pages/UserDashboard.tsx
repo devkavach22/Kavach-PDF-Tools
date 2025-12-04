@@ -660,11 +660,11 @@ export default function UserDashboard() {
                    </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-6 md:p-8">
+                <div className="flex-1 p-6 md:p-8">
                    
                    {/* VIEW 1: FOLDERS GRID */}
                    {currentView === "folders" && (
-                      <div className="space-y-8 max-w-6xl mx-auto">
+                      <div className="space-y-4 max-w-6xl mx-auto">
                            {/* Create Folder Section */}
                            <GlassCard className="p-6 flex flex-col md:flex-row gap-4 items-end md:items-center bg-white/70">
                                <div className="flex-1 w-full space-y-1">

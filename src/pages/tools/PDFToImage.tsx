@@ -135,7 +135,7 @@ export default function PDFToImage() {
         <br/>
         <br/>
         <br/>
-        <main className="flex-1 container py-12">
+        <main className="flex-1 container py-10">
           <div className="max-w-7xl mx-auto space-y-6 px-4 sm:px-6 lg:px-8">
              <Link to="/tools" className="inline-flex items-center bg-white border border-slate-200 rounded-lg px-4 py-2 text-slate-700 gap-2 text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm">
               <ArrowLeft className="h-4 w-4 text-slate-500" /> <span className="text-slate-600">Back to Tools</span>
@@ -152,13 +152,13 @@ export default function PDFToImage() {
 
             {/* UPLOAD */}
             {viewState === "upload" && (
-              <Card className="bg-white/80 backdrop-blur-md shadow-xl border border-slate-200 max-w-5xl mx-auto">
+              <Card className="bg-white/80 backdrop-blur-md shadow-xl border border-slate-200 max-w-6xl mx-auto">
                 <CardHeader>
                   <CardTitle className="text-slate-900">Upload PDF File</CardTitle>
                   <CardDescription className="text-slate-500">Select a PDF to get started</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <div className="border-2 border-dashed rounded-xl p-20 text-center border-slate-300 hover:border-orange-500 transition-colors bg-slate-50 hover:bg-orange-50/20">
+                  <div className="border-2 border-dashed rounded-xl p-24 text-center border-slate-300 hover:border-orange-500 transition-colors bg-slate-50 hover:bg-orange-50/20">
                     <Upload className="mx-auto h-16 w-16 text-slate-400 mb-4" />
                     <label htmlFor="file-upload" className="cursor-pointer">
                       <span className="text-orange-600 font-semibold hover:text-orange-500 text-lg">Choose file</span>
@@ -172,7 +172,7 @@ export default function PDFToImage() {
 
             {/* OPTIONS */}
             {viewState === "options" && file && (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
                 <div className="lg:col-span-2 space-y-4">
                   <Card className="bg-white/80 backdrop-blur-md shadow-xl border border-slate-200 relative h-full min-h-[400px]">
                     <Button variant="ghost" size="icon" className="absolute top-2 right-2 text-slate-400 hover:text-red-500 z-10" onClick={handleReset} disabled={isConverting}>
@@ -241,7 +241,7 @@ export default function PDFToImage() {
 
             {/* SUCCESS */}
             {viewState === "success" && resultFilename && (
-              <div className="max-w-5xl mx-auto">
+              <div className="max-w-6xl mx-auto">
                   <Card className="bg-emerald-50 backdrop-blur-md shadow-xl border border-emerald-200 relative overflow-hidden">
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-500 to-emerald-400" />
                     <CardHeader>

@@ -30,9 +30,8 @@ const STORAGE_KEY = "kavach_signed_file";
 // --- Modals ---
 function SignatureDetailsModal({ open, onOpenChange, onApply }: { open: boolean, onOpenChange: (v: boolean) => void, onApply: (opts: SignatureOptions) => void }) {
   const [stampFile, setStampFile] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null); // Reference for the hidden input
+  const fileInputRef = useRef<HTMLInputElement>(null); 
   
-  // API Parameters UI State
   const [position, setPosition] = useState("bottom-right");
   const [pages, setPages] = useState("all");
   const [scale, setScale] = useState(0.5);
@@ -44,7 +43,6 @@ function SignatureDetailsModal({ open, onOpenChange, onApply }: { open: boolean,
   };
 
   const triggerFileUpload = () => {
-    // Manually click the hidden input
     fileInputRef.current?.click();
   };
 
@@ -78,7 +76,6 @@ function SignatureDetailsModal({ open, onOpenChange, onApply }: { open: boolean,
           <div className="space-y-3">
               <Label className="text-sm font-medium text-slate-700">1. Upload Signature Image</Label>
               
-              {/* Clickable Area using Div + onClick instead of Label nesting */}
               <div 
                 onClick={triggerFileUpload}
                 className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer transition-all group ${stampFile ? 'border-orange-500 bg-orange-50' : 'border-slate-300 hover:border-orange-500 hover:bg-slate-50'}`}
@@ -96,7 +93,6 @@ function SignatureDetailsModal({ open, onOpenChange, onApply }: { open: boolean,
                       <p className="text-xs text-slate-400">PNG, JPG, SVG (Transparent recommended)</p>
                   </div>
                 )}
-                {/* Hidden Input attached to Ref */}
                 <input 
                     ref={fileInputRef}
                     type="file" 
@@ -158,7 +154,7 @@ function SignatureDetailsModal({ open, onOpenChange, onApply }: { open: boolean,
                         <Input 
                             value={pages === "all" ? "" : pages}
                             disabled={pages === "all"}
-                            onClick={() => setPages(prev => prev === "all" ? "1" : prev)} // Auto-select radio on input click
+                            onClick={() => setPages(prev => prev === "all" ? "1" : prev)}
                             onChange={(e) => setPages(e.target.value)}
                             className="h-8 text-sm w-full"
                             placeholder="e.g. 1, 3-5"
@@ -264,20 +260,16 @@ export default function SignaturePDF() {
             }
         });
 
-        // Debug Log
         console.log("PDF Sign Server Response:", response.data);
 
         let resultData: SignedFileDetails | null = null;
 
-        // Validation Strategy 1: Check for 'files' array (Old Standard)
         if (response.data?.files?.length > 0) {
             resultData = response.data.files[0];
         }
-        // Validation Strategy 2: Check for nested 'file' object (MATCHES YOUR LOGS)
         else if (response.data?.file && response.data.file.outputFile) {
             resultData = response.data.file;
         }
-        // Validation Strategy 3: Check for direct object properties
         else if (response.data?.outputFile) {
             resultData = response.data;
         }
@@ -300,7 +292,6 @@ export default function SignaturePDF() {
   };
 
   const handleDownload = async () => {
-    // Robustly check storage first, falling back to state, mirroring CompressPDF logic
     const storedData = localStorage.getItem(STORAGE_KEY);
     let fileDetails: SignedFileDetails | null = null;
 
@@ -370,8 +361,12 @@ export default function SignaturePDF() {
 
       <div className="relative z-10 flex flex-col min-h-screen">
         <Header isAuthenticated={isAuthenticated} isAdmin={isAdmin} onLogout={() => console.log("Logout")} />
-        <main className="flex-1 py-16">
-          <div className="max-w-4xl mx-auto space-y-8 px-4 sm:px-6 lg:px-8">
+        <br/>
+        <br/>
+        <br/>
+         {/* --- IGNORE ABOVE --- */}
+        <main className="flex-1 py-10">
+          <div className="max-w-6xl mx-auto space-y-8 px-4 sm:px-6 lg:px-8">
             <Link to="/tools" className="inline-flex items-center bg-white border border-slate-200 rounded-lg px-4 py-2 text-slate-700 gap-2 text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm">
               <ArrowLeft className="h-4 w-4 text-slate-500" /><span className="text-slate-600">Back</span>
             </Link>
@@ -386,7 +381,7 @@ export default function SignaturePDF() {
 
             {/* Processing State */}
             {isProcessing && (
-                 <Card className="bg-white/80 backdrop-blur-md shadow-xl border border-slate-200 p-12 text-center">
+                 <Card className="bg-white/80 backdrop-blur-md shadow-xl border border-slate-200 p-12 text-center max-w-4xl mx-auto">
                     <Loader2 className="h-12 w-12 text-orange-600 animate-spin mx-auto mb-4" />
                     <h3 className="text-xl font-semibold text-slate-900">Applying Signature...</h3>
                     <p className="text-slate-500">Please wait while we process your document.</p>
@@ -395,16 +390,16 @@ export default function SignaturePDF() {
 
             {/* Input State */}
             {!isProcessing && !signedFile && (
-                <Card className="bg-white shadow-xl border border-slate-200">
+                <Card className="bg-white shadow-xl border border-slate-200 max-w-5xl mx-auto">
                 <CardHeader>
                     <CardTitle className="text-slate-900">Upload PDF File</CardTitle>
                     <CardDescription className="text-slate-500">Select a PDF file to add your signature</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    <div className="border-2 border-dashed rounded-xl p-12 text-center border-slate-300 hover:border-orange-500/50 transition-colors bg-slate-50/50">
-                    <Upload className="mx-auto h-12 w-12 text-slate-400 mb-4" />
+                    <div className="border-2 border-dashed rounded-xl p-16 text-center border-slate-300 hover:border-orange-500/50 transition-colors bg-slate-50/50">
+                    <Upload className="mx-auto h-16 w-16 text-slate-400 mb-4" />
                     <label htmlFor="file-upload" className="cursor-pointer">
-                        <span className="text-orange-600 font-semibold hover:text-orange-500">Choose file</span> <span className="text-slate-500">or drag and drop</span>
+                        <span className="text-orange-600 font-semibold hover:text-orange-500 text-lg">Choose file</span> <span className="text-slate-500 text-lg">or drag and drop</span>
                         <input id="file-upload" type="file" accept=".pdf" className="hidden" onChange={handleFileSelect} />
                     </label>
                     <p className="text-sm text-slate-500 mt-2">PDF files only</p>
@@ -423,7 +418,7 @@ export default function SignaturePDF() {
 
             {/* Success / Download State */}
             {!isProcessing && signedFile && (
-                <Card className="bg-emerald-50 backdrop-blur-md shadow-xl border border-emerald-200 h-full relative overflow-hidden">
+                <Card className="bg-emerald-50 backdrop-blur-md shadow-xl border border-emerald-200 h-full relative overflow-hidden max-w-5xl mx-auto">
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-500 to-emerald-400" />
                     <CardHeader>
                     <div className="flex items-center gap-3 mb-2">

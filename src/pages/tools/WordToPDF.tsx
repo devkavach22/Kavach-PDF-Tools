@@ -9,7 +9,6 @@ import { Upload, FileText, ArrowRightLeft, ArrowLeft, Download, Loader2, CheckCi
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 
-// Interface for the response
 interface ConvertedFileDetails {
   originalName: string;
   outputFile: string; 
@@ -52,19 +51,15 @@ export default function WordToPDF() {
     }
   };
 
-  // --- HELPER: Recursively find any string ending in .pdf ---
   const findPdfInResponse = (obj: any): string | null => {
     if (!obj) return null;
     
-    // If the object itself is the string we want
     if (typeof obj === 'string' && obj.toLowerCase().endsWith('.pdf')) {
         return obj;
     }
 
-    // If it's an array or object, search children
     if (typeof obj === 'object') {
         for (const key in obj) {
-            // Avoid circular references or massive trees if possible, but safe for simple JSON
             if (Object.prototype.hasOwnProperty.call(obj, key)) {
                 const result = findPdfInResponse(obj[key]);
                 if (result) return result;
@@ -101,16 +96,13 @@ export default function WordToPDF() {
       const data = response.data;
       let detectedOutputFile: string | null = null;
 
-      // Priority 1: Check Standard Keys
       detectedOutputFile = data.outputFile || data.filename || data.file || data.path || data.url;
 
-      // Priority 2: Check standard 'files' array pattern
       if (!detectedOutputFile && data.files && Array.isArray(data.files) && data.files[0]) {
          const f = data.files[0];
          detectedOutputFile = f.outputFile || f.filename || f.path || f.url;
       }
 
-      // Priority 3: Deep Search (Fallback) - Finds ANY .pdf string in the object
       if (!detectedOutputFile) {
           console.warn("Standard keys failed. Attempting deep search for PDF...");
           detectedOutputFile = findPdfInResponse(data);
@@ -129,7 +121,6 @@ export default function WordToPDF() {
         setConvertedFile(fileData);
         toast({ title: "Success!", description: "File converted successfully." });
       } else {
-        // If we still can't find it, log the keys to help debugging
         console.error("Could not find PDF path in:", data);
         throw new Error("Conversion succeeded, but no PDF filename was found in the response.");
       }
@@ -156,7 +147,6 @@ export default function WordToPDF() {
       return;
     }
 
-    // Extract just the filename to be safe, handling both / and \ paths
     const rawPath = convertedFile.outputFile;
     const filenameToDownload = rawPath.split(/[/\\]/).pop();
 
@@ -209,7 +199,11 @@ export default function WordToPDF() {
 
       <div className="relative z-10 flex flex-col min-h-screen">
         <Header isAuthenticated={isAuthenticated} isAdmin={isAdmin} onLogout={() => console.log("Logout")} />
-        <main className="flex-1 flex-col py-16">
+        <br/>
+        <br/>
+        <br/>
+         {/* --- IGNORE ABOVE --- */}
+        <main className="flex-1 flex-col py-10">
           <div className="max-w-7xl mx-auto space-y-6 px-4 sm:px-6 lg:px-8">
              <Link to="/tools" className="inline-flex items-center bg-white border border-slate-200 rounded-lg px-4 py-2 text-slate-700 gap-2 text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm">
               <ArrowLeft className="h-4 w-4 text-slate-500" /><span className="text-slate-600">Back to Tools</span>
@@ -223,7 +217,7 @@ export default function WordToPDF() {
               <p className="text-lg text-slate-500">Convert your Word document (.docx, .doc) to a universal PDF file</p>
             </div>
 
-             <div className="max-w-3xl mx-auto">
+             <div className="max-w-6xl mx-auto">
                 {!convertedFile ? (
                   <Card className="bg-white/80 backdrop-blur-md shadow-xl border border-slate-200">
                     <CardHeader>
@@ -231,10 +225,10 @@ export default function WordToPDF() {
                       <CardDescription className="text-slate-500">Select a Word file to convert</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                      <div className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors bg-slate-50/50 ${isConverting ? 'opacity-50 pointer-events-none border-slate-300' : 'border-slate-300 hover:border-orange-500'}`}>
-                        <Upload className="mx-auto h-12 w-12 text-slate-400 mb-4" />
+                      <div className={`border-2 border-dashed rounded-xl p-20 text-center transition-colors bg-slate-50/50 ${isConverting ? 'opacity-50 pointer-events-none border-slate-300' : 'border-slate-300 hover:border-orange-500'}`}>
+                        <Upload className="mx-auto h-16 w-16 text-slate-400 mb-4" />
                         <label htmlFor="file-upload" className="cursor-pointer">
-                          <span className="text-orange-600 font-semibold hover:text-orange-500">Choose file</span> <span className="text-slate-500">or drag and drop</span>
+                          <span className="text-orange-600 font-semibold hover:text-orange-500 text-lg">Choose file</span> <span className="text-slate-500 text-lg">or drag and drop</span>
                           <input id="file-upload" type="file" accept=".doc,.docx" disabled={isConverting} className="hidden" onChange={handleFileSelect} />
                         </label>
                         <p className="text-sm text-slate-500 mt-2">.doc or .docx files only</p>

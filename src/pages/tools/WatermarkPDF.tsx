@@ -25,13 +25,11 @@ export default function WatermarkPDF() {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   
-  // Configuration States
-  const [activeTab, setActiveTab] = useState("text"); // 'text' or 'image'
+  const [activeTab, setActiveTab] = useState("text"); 
   const [watermarkText, setWatermarkText] = useState("KAVACH");
   const [rotation, setRotation] = useState("-45");
   const [pages, setPages] = useState("all");
   
-  // Processing States
   const [isProcessing, setIsProcessing] = useState(false);
   const [watermarkedFile, setWatermarkedFile] = useState<WatermarkedFileResponse | null>(null);
   
@@ -39,7 +37,6 @@ export default function WatermarkPDF() {
   const isAuthenticated = true;
   const isAdmin = false;
 
-  // Cleanup preview URL on unmount or file change
   useEffect(() => {
     return () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -52,7 +49,6 @@ export default function WatermarkPDF() {
       setFile(selectedFile);
       setWatermarkedFile(null);
       
-      // Create object URL for preview
       const objectUrl = URL.createObjectURL(selectedFile);
       setPreviewUrl(objectUrl);
 
@@ -76,19 +72,14 @@ export default function WatermarkPDF() {
       const formData = new FormData();
       formData.append('file', file);
 
-      // Construct Config JSON string matching Postman snippet
-      // Example: '{ "type": "text", "text": "KAVACH", "pages": "all", "rotation": -45 }'
       const configObj = {
-        type: activeTab, // "text" or "image" (Note: backend needs to support image type logic if selected)
+        type: activeTab, 
         text: activeTab === 'text' ? watermarkText : "",
         pages: pages,
         rotation: parseInt(rotation)
       };
 
       formData.append('config', JSON.stringify(configObj));
-
-      // If image watermark is implemented in backend, you would append it here:
-      // if (activeTab === 'image' && watermarkImage) formData.append('watermarkImage', watermarkImage);
 
       const response = await Instance.post('/pdf/watermark-pdf', formData, {
         headers: {
@@ -97,17 +88,12 @@ export default function WatermarkPDF() {
         }
       });
 
-      // Assuming backend returns { files: [ { outputFile: "..." } ] } similar to compress endpoint
-      // Adjust this based on exact response structure. 
-      // Based on snippet, it likely returns the file details directly or in a 'data' wrapper.
       if (response.data) {
-        // Mocking the response structure based on CompressPDF pattern
-        // You might need to adjust 'response.data.files[0]' depending on exact API return
         const resultData = response.data.files ? response.data.files[0] : response.data;
         
         setWatermarkedFile({
           originalName: file.name,
-          outputFile: resultData.outputFile || resultData.filename, // Fallback depending on API key
+          outputFile: resultData.outputFile || resultData.filename, 
           message: "Watermark applied successfully"
         });
         
@@ -130,7 +116,7 @@ export default function WatermarkPDF() {
     if (!watermarkedFile || !watermarkedFile.outputFile) return;
 
     const rawPath = watermarkedFile.outputFile;
-    const filenameToDownload = rawPath.split(/[/\\]/).pop(); // Extract filename
+    const filenameToDownload = rawPath.split(/[/\\]/).pop();
 
     if (!filenameToDownload) {
       toast({ title: "Error", description: "Invalid filename", variant: "destructive" });
@@ -180,8 +166,11 @@ export default function WatermarkPDF() {
 
       <div className="relative z-10 flex flex-col min-h-screen">
         <Header isAuthenticated={isAuthenticated} isAdmin={isAdmin} onLogout={() => console.log("Logout")} />
-        
-        <main className="flex-1 py-16">
+        <br/>
+        <br/>
+        <br/>
+         {/* --- IGNORE ABOVE --- */}
+        <main className="flex-1 py-10">
           <div className="max-w-7xl mx-auto space-y-6 px-4 sm:px-6 lg:px-8">
             <Link to="/tools" className="inline-flex items-center bg-white border border-slate-200 rounded-lg px-4 py-2 text-slate-700 gap-2 text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm">
               <ArrowLeft className="h-4 w-4 text-slate-500" /><span className="text-slate-600">Back to Tools</span>
@@ -224,17 +213,17 @@ export default function WatermarkPDF() {
             ) : (
               // Upload & Config View
               !file ? (
-                 <Card className="bg-white shadow-xl border border-slate-200 max-w-4xl mx-auto">
+                 <Card className="bg-white shadow-xl border border-slate-200 max-w-6xl mx-auto">
                     <CardHeader>
                       <CardTitle className="text-slate-900">Upload PDF File</CardTitle>
                       <CardDescription className="text-slate-500">Select a PDF to add a watermark</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="border-2 border-dashed rounded-xl p-12 text-center border-slate-300 hover:border-orange-500/50 transition-colors bg-slate-50/50">
-                        <Upload className="mx-auto h-12 w-12 text-slate-400 mb-4" />
+                      <div className="border-2 border-dashed rounded-xl p-24 text-center border-slate-300 hover:border-orange-500/50 transition-colors bg-slate-50/50">
+                        <Upload className="mx-auto h-16 w-16 text-slate-400 mb-4" />
                         <label htmlFor="file-upload" className="cursor-pointer">
-                          <span className="text-orange-600 font-semibold hover:text-orange-500">Choose file</span> 
-                          <span className="text-slate-500"> or drag and drop</span>
+                          <span className="text-orange-600 font-semibold hover:text-orange-500 text-lg">Choose file</span> 
+                          <span className="text-slate-500 text-lg"> or drag and drop</span>
                           <input id="file-upload" type="file" accept=".pdf" className="hidden" onChange={handleFileSelect} />
                         </label>
                       </div>

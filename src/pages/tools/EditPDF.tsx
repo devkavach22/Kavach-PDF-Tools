@@ -9,16 +9,14 @@ import { useToast } from "@/hooks/use-toast";
 import Instance from "@/lib/axiosInstance";
 import { motion } from "framer-motion";
 
-// --- REACT-PDF IMPORTS ---
 import { Document, Page, pdfjs } from 'react-pdf';
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
-// --- INTERFACES ---
 interface Annotation {
   id: string;
   type: 'text' | 'image' | 'signature';
-  x: number; // Stored as percentage (0-100)
-  y: number; // Stored as percentage (0-100)
+  x: number; 
+  y: number; 
   page: number;
   content?: string; 
   src?: string;     
@@ -58,7 +56,6 @@ export default function EditPDF() {
   const isAuthenticated = true;
   const isAdmin = false;
 
-  // Restore state on load
   useEffect(() => {
     const storedData = localStorage.getItem(STORAGE_KEY);
     if (storedData) {
@@ -70,8 +67,6 @@ export default function EditPDF() {
       }
     }
   }, []);
-
-  // --- HANDLERS ---
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -105,7 +100,7 @@ export default function EditPDF() {
   const onPageLoadSuccess = (page: any) => {
     setPageDimensions(prev => ({
       ...prev,
-      [page.pageIndex + 1]: { // Store 1-based index to match component logic
+      [page.pageIndex + 1]: { 
         width: page.originalWidth,
         height: page.originalHeight
       }
@@ -116,8 +111,6 @@ export default function EditPDF() {
     setActiveTool(toolName === activeTool ? null : toolName); 
     toast({ title: "Tool Selected", description: toolName === activeTool ? "Tool deselected" : `Click on page to place: ${toolName}` });
   };
-
-  // --- CORE EDITING LOGIC ---
 
   const handlePageClick = (e: React.MouseEvent<HTMLDivElement>, pageNum: number) => {
     if (!activeTool) return;
@@ -132,7 +125,7 @@ export default function EditPDF() {
         type: 'text',
         x, y, page: pageNum,
         content: "Type text here...",
-        fontSize: 20, // Default size matched to backend example
+        fontSize: 20,
         color: "#000000"
       };
       setAnnotations([...annotations, newAnnotation]);
@@ -141,7 +134,7 @@ export default function EditPDF() {
     else if (activeTool === 'signature') {
       const newAnnotation: Annotation = {
         id: Date.now().toString(),
-        type: 'signature', // Treated as text with special font or image in backend
+        type: 'signature', 
         x, y, page: pageNum,
         content: "Sign Here"
       };
@@ -166,7 +159,7 @@ export default function EditPDF() {
             y: pendingImageClick.y,
             page: pendingImageClick.page,
             src: event.target.result as string,
-            width: 120, // Default width
+            width: 120, 
             height: 120
           };
           setAnnotations([...annotations, newAnnotation]);
@@ -187,18 +180,15 @@ export default function EditPDF() {
     setAnnotations(annotations.filter(a => a.id !== id));
   };
 
-  // --- HELPERS FOR BACKEND ---
-
   const hexToRgb = (hex: string) => {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
     return result ? {
-      r: parseInt(result[1], 16) / 255, // Backend expects 0-1 float
+      r: parseInt(result[1], 16) / 255, 
       g: parseInt(result[2], 16) / 255,
       b: parseInt(result[3], 16) / 255
     } : { r: 0, g: 0, b: 0 };
   };
 
-  // --- DOWNLOAD HANDLER (Matched to CompressPDF) ---
   const handleDownloadFile = async () => {
     if (!processedFile?.fileName) {
       toast({ title: "Download Error", description: "No file record found.", variant: "destructive" });
@@ -247,17 +237,12 @@ export default function EditPDF() {
 
     try {
       const formData = new FormData();
-      // 1. Append the File
       formData.append('file', file);
 
-      // 2. Construct the Edits JSON
       const edits = annotations.map(ann => {
-        const pageDims = pageDimensions[ann.page] || { width: 600, height: 842 }; // Fallback to A4
-        
-        // Convert Percentage to PDF Points
-        // Backend typically uses Bottom-Left origin for Y
+        const pageDims = pageDimensions[ann.page] || { width: 600, height: 842 }; 
         const absX = (ann.x / 100) * pageDims.width;
-        const absY = (1 - (ann.y / 100)) * pageDims.height; // Invert Y for PDF coordinate system
+        const absY = (1 - (ann.y / 100)) * pageDims.height; 
 
         if (ann.type === 'text' || ann.type === 'signature') {
           return {
@@ -265,14 +250,14 @@ export default function EditPDF() {
             value: ann.content || "Text",
             x: Math.round(absX),
             y: Math.round(absY),
-            pageIndex: ann.page - 1, // 0-based index
+            pageIndex: ann.page - 1, 
             size: ann.fontSize || 20,
             color: hexToRgb(ann.color || "#000000")
           };
         } else if (ann.type === 'image') {
           return {
             type: "image",
-            src: ann.src, // Data URI
+            src: ann.src, 
             x: Math.round(absX),
             y: Math.round(absY),
             width: ann.width || 120,
@@ -283,12 +268,10 @@ export default function EditPDF() {
         return null;
       }).filter(Boolean);
 
-      // 3. Append edits as stringified JSON
       formData.append('edits', JSON.stringify(edits));
       
       const token = localStorage.getItem("authToken");
 
-      // 4. Send Request with Headers
       const response = await Instance.post('/pdf/edit-pdf', formData, {
         headers: {
             'Content-Type': 'multipart/form-data',
@@ -299,13 +282,11 @@ export default function EditPDF() {
       console.log("Full Edit Response:", response.data);
       const data = response.data;
       
-      // Robust Filename Extraction
       let extractedName = "";
       if (typeof data === 'string') extractedName = data;
       else if (data.fileName) extractedName = data.fileName;
       else if (data.outputFile) extractedName = data.outputFile;
       
-      // Handle array format if backend matches CompressPDF structure
       if (!extractedName && Array.isArray(data.files) && data.files.length > 0) {
         extractedName = data.files[0].outputFile || data.files[0].fileName;
       }
@@ -319,7 +300,7 @@ export default function EditPDF() {
         
         setProcessedFile(resultData);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(resultData));
-        setIsEditing(false); // Switch View to Success Card
+        setIsEditing(false); 
         
       } else {
         throw new Error("No filename found in server response.");
@@ -343,12 +324,9 @@ export default function EditPDF() {
     if (input) input.value = '';
   };
 
-  // --- RENDER ---
-
   return (
     <div className="relative flex flex-col min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-orange-100 selection:text-orange-900 overflow-x-hidden">
       
-      {/* Background Effects (Matched to CompressPDF) */}
       <div className="fixed inset-0 z-0 pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white via-slate-50 to-slate-100" />
         <motion.div animate={{ opacity: [0.4, 0.6, 0.4], scale: [1, 1.1, 1], rotate: [0, 5, 0] }} transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }} className="absolute -top-[20%] left-[10%] w-[60vw] h-[60vw] bg-orange-200/40 rounded-full blur-[120px]" />
@@ -366,10 +344,10 @@ export default function EditPDF() {
 
       <div className="relative z-10 flex flex-col min-h-screen">
         <Header isAuthenticated={isAuthenticated} isAdmin={isAdmin} onLogout={() => console.log("Logout clicked")} />
-          <br/>
-          <br/>
-          <br/>
-        <main className="flex-1 flex-col py-16">
+        <br/>
+        <br/>
+        <br/>
+        <main className="flex-1 flex-col py-10">
           <div className="max-w-7xl mx-auto space-y-2 px-4 sm:px-6 lg:px-8">
             
             {/* === VIEW: DOWNLOAD RESULT (SHOWN AFTER SAVE) === */}
@@ -419,7 +397,6 @@ export default function EditPDF() {
               
               /* === VIEW: EDITOR MODE === */
               <div className="space-y-6">
-                {/* Toolbar Header */}
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                   <Button
                     onClick={() => { setIsEditing(false); setFile(null); }}
@@ -519,7 +496,6 @@ export default function EditPDF() {
                                         key={`page_${pageNum}`} 
                                         className="relative group shadow-lg"
                                     >
-                                        {/* THE PAGE CONTAINER */}
                                         <div 
                                           className={`relative bg-white transition-all ${activeTool ? 'cursor-crosshair ring-2 ring-orange-400 ring-offset-4' : 'cursor-default'}`}
                                           onClick={(e) => handlePageClick(e, pageNum)}
@@ -532,7 +508,6 @@ export default function EditPDF() {
                                                 onLoadSuccess={onPageLoadSuccess}
                                             />
 
-                                            {/* --- ANNOTATIONS LAYER --- */}
                                             {annotations.filter(a => a.page === pageNum).map((ann) => (
                                               <div
                                                 key={ann.id}
@@ -540,11 +515,10 @@ export default function EditPDF() {
                                                 style={{ 
                                                   left: `${ann.x}%`, 
                                                   top: `${ann.y}%`,
-                                                  transform: 'translate(-50%, -50%)', // Center on click
+                                                  transform: 'translate(-50%, -50%)', 
                                                 }}
-                                                onClick={(e) => e.stopPropagation()} // Prevent creating new items when clicking existing
+                                                onClick={(e) => e.stopPropagation()} 
                                               >
-                                                {/* Delete Button (appears on hover) */}
                                                 <button
                                                   onClick={(e) => deleteAnnotation(ann.id, e)}
                                                   className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover/item:opacity-100 transition-opacity z-50 shadow-sm"
@@ -552,7 +526,6 @@ export default function EditPDF() {
                                                   <X className="h-3 w-3" />
                                                 </button>
 
-                                                {/* Text Annotation */}
                                                 {ann.type === 'text' && (
                                                   <textarea
                                                     className="bg-transparent border border-transparent hover:border-blue-300 focus:border-blue-500 text-slate-900 px-2 py-1 resize min-w-[150px] overflow-hidden outline-none rounded"
@@ -562,20 +535,18 @@ export default function EditPDF() {
                                                   />
                                                 )}
 
-                                                {/* Signature Annotation */}
                                                 {ann.type === 'signature' && (
                                                   <div className="relative">
                                                     <input
                                                       className="bg-transparent border-b border-transparent hover:border-slate-300 focus:border-orange-500 text-slate-900 px-2 py-1 text-3xl outline-none min-w-[200px]"
                                                       value={ann.content}
                                                       onChange={(e) => updateAnnotationContent(ann.id, e.target.value)}
-                                                      style={{ fontFamily: 'Brush Script MT, cursive' }} // Cursive font
+                                                      style={{ fontFamily: 'Brush Script MT, cursive' }} 
                                                     />
                                                     <p className="text-[10px] text-slate-400 absolute top-full left-0 w-full text-center pointer-events-none">Signature</p>
                                                   </div>
                                                 )}
 
-                                                {/* Image Annotation */}
                                                 {ann.type === 'image' && ann.src && (
                                                   <div className="relative border-2 border-transparent hover:border-blue-300 group-hover/item:border-dashed p-1">
                                                     <img 
@@ -625,13 +596,13 @@ export default function EditPDF() {
                   </p>
                 </div>
 
-                <Card className="bg-white/80 backdrop-blur-md shadow-xl border border-slate-200 max-w-3xl mx-auto">
+                <Card className="bg-white/80 backdrop-blur-md shadow-xl border border-slate-200 max-w-6xl mx-auto">
                   <CardContent className="space-y-6 pt-6">
-                    <div className="border-2 border-dashed rounded-xl p-12 text-center border-slate-300 hover:border-orange-500 transition-colors bg-slate-50">
-                      <Upload className="mx-auto h-12 w-12 text-slate-400 mb-4" />
+                    <div className="border-2 border-dashed rounded-xl p-24 text-center border-slate-300 hover:border-orange-500 transition-colors bg-slate-50">
+                      <Upload className="mx-auto h-16 w-16 text-slate-400 mb-4" />
                       <label htmlFor="file-upload" className="cursor-pointer">
-                        <span className="text-orange-600 font-semibold hover:text-orange-500 transition-colors">Choose file</span>
-                        {" "}<span className="text-slate-500">or drag and drop</span>
+                        <span className="text-orange-600 font-semibold hover:text-orange-500 text-lg transition-colors">Choose file</span>
+                        {" "}<span className="text-slate-500 text-lg">or drag and drop</span>
                         <input id="file-upload" type="file" accept=".pdf" className="hidden" onChange={handleFileSelect} />
                       </label>
                       <p className="text-sm text-slate-500 mt-2">PDF files only</p>

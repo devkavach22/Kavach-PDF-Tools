@@ -74,15 +74,12 @@ export default function PDFToWord() {
 
       console.log("SERVER RESPONSE:", response.data);
 
-      // --- FIX START: Robust Parsing Logic (Matches CompressPDF) ---
       let generatedFileName = "";
       
-      // 1. Check if response has 'files' array (Standard for your backend tools)
       if (response.data.files && Array.isArray(response.data.files) && response.data.files.length > 0) {
         const fileData = response.data.files[0];
         generatedFileName = fileData.outputFile || fileData.fileName || fileData.filename || fileData.name;
       } 
-      // 2. Fallback: Check direct object properties
       else if (typeof response.data === 'object' && response.data !== null) {
         generatedFileName = 
           response.data.fileName || 
@@ -91,7 +88,6 @@ export default function PDFToWord() {
           response.data.file || 
           response.data.name;
       }
-      // 3. Fallback: String response
       else if (typeof response.data === 'string') {
         generatedFileName = response.data;
       }
@@ -99,7 +95,6 @@ export default function PDFToWord() {
       if (!generatedFileName) {
         throw new Error("Server returned a response, but could not find the filename.");
       }
-      // --- FIX END ---
 
       const fileData: ConvertedFileDetails = {
         originalName: file.name,
@@ -136,13 +131,11 @@ export default function PDFToWord() {
   };
 
   const handleDownload = async () => {
-    // Safety check
     if (!convertedFile || !convertedFile.outputFileName) {
       toast({ title: "Download Error", description: "No file available to download.", variant: "destructive" });
       return;
     }
 
-    // --- LOGIC ALIGNED WITH CompressPDF.tsx ---
     const rawPath = convertedFile.outputFileName;
     const filenameToDownload = rawPath.split(/[/\\]/).pop();
 
@@ -209,8 +202,10 @@ export default function PDFToWord() {
 
       <div className="relative z-10 flex flex-col min-h-screen">
         <Header isAuthenticated={isAuthenticated} isAdmin={isAdmin} onLogout={() => { localStorage.removeItem("authToken"); window.location.href = "/login"; }} />
-
-        <main className="flex-1 flex-col py-16">
+        <br/>
+        <br/>
+        <br/>
+        <main className="flex-1 flex-col py-12">
           <div className="max-w-7xl mx-auto space-y-6 px-4 sm:px-6 lg:px-8">
             <Link to="/tools" className="inline-flex items-center bg-white border border-slate-200 rounded-lg px-4 py-2 text-slate-700 gap-2 text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm">
               <ArrowLeft className="h-4 w-4 text-slate-500" />
@@ -232,9 +227,8 @@ export default function PDFToWord() {
             </div>
 
             {/* === MAIN CARD AREA === */}
-            <div className="max-w-3xl mx-auto mt-8">
+            <div className="max-w-6xl mx-auto mt-8">
               {!convertedFile ? (
-                // --- STATE 1: UPLOAD & CONVERT ---
                 <Card className="bg-white/80 backdrop-blur-md shadow-xl border border-slate-200">
                   <CardHeader>
                     <CardTitle className="text-slate-900">Upload PDF File</CardTitle>
@@ -243,11 +237,11 @@ export default function PDFToWord() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors bg-slate-50 ${isConverting ? "opacity-50 pointer-events-none border-slate-300" : file ? "border-orange-500" : "border-slate-300 hover:border-orange-500"}`}>
-                      <Upload className="mx-auto h-12 w-12 text-slate-400 mb-2" />
+                    <div className={`border-2 border-dashed rounded-xl p-16 text-center transition-colors bg-slate-50 ${isConverting ? "opacity-50 pointer-events-none border-slate-300" : file ? "border-orange-500" : "border-slate-300 hover:border-orange-500"}`}>
+                      <Upload className="mx-auto h-16 w-16 text-slate-400 mb-4" />
                       <label htmlFor="file-upload" className="cursor-pointer">
-                        <span className="text-orange-600 font-semibold hover:text-orange-500 transition-colors">Choose file</span>
-                        <span className="text-slate-500"> or drag and drop</span>
+                        <span className="text-orange-600 font-semibold hover:text-orange-500 transition-colors text-lg">Choose file</span>
+                        <span className="text-slate-500 text-lg"> or drag and drop</span>
                         <input id="file-upload" type="file" accept=".pdf" disabled={isConverting} className="hidden" onChange={handleFileSelect} />
                       </label>
                       <p className="text-sm text-slate-500 mt-2">PDF files only</p>
@@ -263,13 +257,12 @@ export default function PDFToWord() {
                       </div>
                     )}
 
-                    <Button onClick={handleConvert} disabled={!file || isConverting} className="w-full bg-orange-600 hover:bg-orange-700 text-base py-6 rounded-xl font-semibold transition-colors mt-2 text-white shadow-lg shadow-orange-500/20">
+                    <Button onClick={handleConvert} disabled={!file || isConverting} className="w-full bg-orange-600 hover:bg-orange-700 text-lg py-6 rounded-xl font-semibold transition-colors mt-4 text-white shadow-lg shadow-orange-500/20">
                       {isConverting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Processing...</> : <><ArrowRightLeft className="mr-2 h-5 w-5" />Convert to Word</>}
                     </Button>
                   </CardContent>
                 </Card>
               ) : (
-                // --- STATE 2: SUCCESS & DOWNLOAD (MATCHES CompressPDF) ---
                 <Card className="bg-emerald-50 backdrop-blur-md shadow-xl border border-emerald-200 h-full relative overflow-hidden">
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-500 to-emerald-400" />
                   <CardHeader>
@@ -291,7 +284,6 @@ export default function PDFToWord() {
                             <div>
                                 <span className="text-emerald-700 text-xs block uppercase font-semibold">Output File</span>
                                 <span className="text-emerald-900 font-mono text-sm truncate max-w-[200px] block">
-                                  {/* Just show the filename part */}
                                   {convertedFile?.outputFileName ? String(convertedFile.outputFileName).split(/[/\\]/).pop() : "Unknown_File"}
                                 </span>
                             </div>

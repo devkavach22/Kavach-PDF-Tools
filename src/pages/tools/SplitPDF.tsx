@@ -32,7 +32,6 @@ export default function SplitPDF() {
   const isAuthenticated = true;
   const isAdmin = false;
 
-  // Restore state from local storage on load
   useEffect(() => {
     const storedData = localStorage.getItem(STORAGE_KEY);
     if (storedData) {
@@ -84,7 +83,6 @@ export default function SplitPDF() {
       const formData = new FormData();
       formData.append('file', file);
       
-      // Append ranges exactly as the Postman snippet: "ranges": "1-3", "ranges": "5-7"
       customRanges.forEach(range => {
         if(range.from && range.to) {
             formData.append('ranges', `${range.from}-${range.to}`);
@@ -100,19 +98,15 @@ export default function SplitPDF() {
         }
       });
 
-      // Assuming backend returns { message: "...", outputFile: "filename.zip", ... }
-      // Adjust this based on your exact API response structure if it differs
       const resultData = response.data;
       
       if (resultData) {
-        // Construct the details object
         const fileData: SplitFileDetails = {
             originalName: file.name,
-            outputFile: resultData.outputFile || resultData.filename || resultData.zipUrl, // Fallbacks based on common API patterns
+            outputFile: resultData.outputFile || resultData.filename || resultData.zipUrl, 
             message: resultData.message || "Split successful"
         };
 
-        // If the API returns the filename inside a 'files' array like compress
         if(response.data.files && response.data.files.length > 0) {
              fileData.outputFile = response.data.files[0].outputFile;
         }
@@ -138,7 +132,6 @@ export default function SplitPDF() {
       return;
     }
 
-    // Extract filename from path if necessary
     const rawPath = splitResult.outputFile;
     const filenameToDownload = rawPath.split(/[/\\]/).pop();
 
@@ -154,7 +147,7 @@ export default function SplitPDF() {
 
       const response = await Instance.get(`/pdf/download/${filenameToDownload}`, {
         headers: { 'Authorization': token ? `${token}` : '' },
-        responseType: 'blob', // Important for file downloads
+        responseType: 'blob', 
       });
       
       const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -197,7 +190,8 @@ export default function SplitPDF() {
         <br/>
         <br/>
         <br/>
-        <main className="flex-1 flex-col py-16">
+         {/* --- IGNORE ABOVE --- */}
+        <main className="flex-1 flex-col py-10">
           <div className="max-w-7xl mx-auto space-y-6 px-4 sm:px-6 lg:px-8">
             <Link to="/tools" className="inline-flex items-center bg-white border border-slate-200 rounded-lg px-4 py-2 text-slate-700 gap-2 text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm">
               <ArrowLeft className="h-4 w-4 text-slate-500" /><span className="text-slate-600">Back to Tools</span>
@@ -225,11 +219,11 @@ export default function SplitPDF() {
                       <CardDescription className="text-slate-500">Select the PDF file you want to split</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                      <div className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors bg-slate-50 ${isSplitting ? 'opacity-50 pointer-events-none border-slate-300' : 'border-slate-300 hover:border-orange-500'}`}>
-                        <Upload className="mx-auto h-12 w-12 text-slate-400 mb-4" />
+                      <div className={`border-2 border-dashed rounded-xl p-16 text-center transition-colors bg-slate-50 ${isSplitting ? 'opacity-50 pointer-events-none border-slate-300' : 'border-slate-300 hover:border-orange-500'}`}>
+                        <Upload className="mx-auto h-16 w-16 text-slate-400 mb-4" />
                         <label htmlFor="file-upload" className="cursor-pointer">
-                            <span className="text-orange-600 font-semibold hover:text-orange-500 transition-colors">Choose file</span>
-                            {" "}<span className="text-slate-500">or drag and drop</span>
+                            <span className="text-orange-600 font-semibold hover:text-orange-500 transition-colors text-lg">Choose file</span>
+                            {" "}<span className="text-slate-500 text-lg">or drag and drop</span>
                             <input id="file-upload" type="file" accept=".pdf" disabled={isSplitting} className="hidden" onChange={handleFileSelect} />
                         </label>
                       </div>

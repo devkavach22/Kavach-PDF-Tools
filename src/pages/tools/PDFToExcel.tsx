@@ -83,19 +83,13 @@ export default function PDFToExcel() {
         },
       });
 
-      console.log("Full Server Response:", uploadResponse.data); // Check console if it fails again
-
       const responseData = uploadResponse.data;
       let targetFilename = "";
 
-      // 1. IMPROVED PARSING LOGIC
-      // Check if response matches CompressPDF structure (files array)
       if (responseData.files && Array.isArray(responseData.files) && responseData.files.length > 0) {
         const fileData = responseData.files[0];
-        // Try common property names
         targetFilename = fileData.outputFile || fileData.outputFilename || fileData.filename || fileData.file;
       }
-      // Check flat structure variants
       else if (typeof responseData === 'string') targetFilename = responseData;
       else if (responseData?.filename) targetFilename = responseData.filename;
       else if (responseData?.file) targetFilename = responseData.file;
@@ -122,18 +116,12 @@ export default function PDFToExcel() {
 
     } catch (error: any) {
       console.error("Conversion Error:", error);
-      
-      // 2. BETTER ERROR DISPLAY
-      // If it's a parsing error (our 'throw new Error'), show that message.
-      // If it's a server error, show the server message.
       let errorMessage = "Conversion failed.";
-      
       if (error.response?.data?.error) {
          errorMessage = error.response.data.error;
       } else if (error.message) {
          errorMessage = error.message;
       }
-
       toast({ 
         title: "Error", 
         description: errorMessage, 
@@ -180,7 +168,6 @@ export default function PDFToExcel() {
       link.setAttribute("download", filenameToDownload);
       document.body.appendChild(link);
       link.click();
-      
       link.parentNode?.removeChild(link);
       window.URL.revokeObjectURL(url);
       
@@ -196,7 +183,6 @@ export default function PDFToExcel() {
     setFile(null);
     setConvertedFile(null);
     localStorage.removeItem(STORAGE_KEY);
-    
     const fileInput = document.getElementById('file-upload') as HTMLInputElement;
     if (fileInput) fileInput.value = '';
   };
@@ -213,8 +199,10 @@ export default function PDFToExcel() {
 
       <div className="relative z-10 flex flex-col min-h-screen">
         <Header isAuthenticated={isAuthenticated} isAdmin={isAdmin} onLogout={() => console.log("Logout")} />
-
-        <main className="flex-1 flex-col py-16">
+        <br/>
+        <br/>
+        <br/>
+        <main className="flex-1 flex-col py-10">
           <div className="max-w-7xl mx-auto space-y-6 px-4 sm:px-6 lg:px-8">
             
             <Link
@@ -250,11 +238,11 @@ export default function PDFToExcel() {
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="space-y-6">
-                        <div className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors bg-slate-50 ${isLoading ? 'opacity-50 pointer-events-none border-slate-300' : 'border-slate-300 hover:border-orange-500'}`}>
-                          <Upload className="mx-auto h-12 w-12 text-slate-400 mb-4" />
+                        <div className={`border-2 border-dashed rounded-xl p-16 text-center transition-colors bg-slate-50 ${isLoading ? 'opacity-50 pointer-events-none border-slate-300' : 'border-slate-300 hover:border-orange-500'}`}>
+                          <Upload className="mx-auto h-16 w-16 text-slate-400 mb-4" />
                           <label htmlFor="file-upload" className="cursor-pointer">
-                            <span className="text-orange-600 font-semibold hover:text-orange-500 transition-colors">Choose file</span>
-                            {" "}<span className="text-slate-500">or drag and drop</span>
+                            <span className="text-orange-600 font-semibold hover:text-orange-500 transition-colors text-lg">Choose file</span>
+                            {" "}<span className="text-slate-500 text-lg">or drag and drop</span>
                             <input
                               id="file-upload"
                               type="file"
@@ -284,7 +272,7 @@ export default function PDFToExcel() {
                         <Button
                           onClick={handleConvert}
                           disabled={!file || isLoading}
-                          className="w-full bg-orange-600 hover:bg-orange-700 text-white text-base py-6 rounded-xl font-semibold transition-colors disabled:opacity-70"
+                          className="w-full bg-orange-600 hover:bg-orange-700 text-white text-lg py-6 rounded-xl font-semibold transition-colors disabled:opacity-70"
                         >
                           {isLoading ? (
                             <>
@@ -353,7 +341,6 @@ export default function PDFToExcel() {
                   )}
                 </div>
 
-                {/* Info Sidebar */}
                 <div className={`lg:col-span-1 transition-opacity duration-300 ${convertedFile ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
                   <Card className="bg-white/80 backdrop-blur-md shadow-xl border border-slate-200 h-full">
                     <CardHeader>

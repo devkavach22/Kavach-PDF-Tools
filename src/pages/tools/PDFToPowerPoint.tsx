@@ -133,8 +133,8 @@ export default function PDFToPowerPoint() {
         <br/>
         <br/>
         <br/>
-        <main className="flex-1 flex-col py-12">
-          <div className="max-w-6xl mx-auto space-y-8 px-4 sm:px-6 lg:px-8">
+        <main className="flex-1 flex-col py-10">
+          <div className="max-w-7xl mx-auto space-y-8 px-4 sm:px-6 lg:px-8">
              <Link to="/tools" className="inline-flex items-center bg-white border border-slate-200 rounded-lg px-4 py-2 text-slate-700 gap-2 text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm">
               <ArrowLeft className="h-4 w-4 text-slate-500" /><span className="text-slate-600">Back to Tools</span>
             </Link>
@@ -149,7 +149,7 @@ export default function PDFToPowerPoint() {
               <p className="text-lg text-slate-500">Convert your PDF to an editable PowerPoint presentation (.pptx)</p>
             </div>
 
-            <div className="w-full max-w-5xl mx-auto">
+            <div className="w-full max-w-6xl mx-auto">
                 {!convertedFile ? (
                     <Card className="bg-white/80 backdrop-blur-md shadow-xl border border-slate-200">
                         <CardHeader>
@@ -157,7 +157,7 @@ export default function PDFToPowerPoint() {
                         <CardDescription className="text-slate-500">Select a PDF file to convert</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                        <div className={`border-2 border-dashed rounded-xl p-16 text-center transition-colors bg-slate-50 ${isConverting ? 'opacity-50 pointer-events-none border-slate-300' : 'border-slate-300 hover:border-orange-500 hover:bg-orange-50/20'}`}>
+                        <div className={`border-2 border-dashed rounded-xl p-20 text-center transition-colors bg-slate-50 ${isConverting ? 'opacity-50 pointer-events-none border-slate-300' : 'border-slate-300 hover:border-orange-500 hover:bg-orange-50/20'}`}>
                             <Upload className="mx-auto h-16 w-16 text-slate-400 mb-4" />
                             <label htmlFor="file-upload" className="cursor-pointer">
                             <span className="text-orange-600 font-semibold hover:text-orange-500 text-lg">Choose file</span> <span className="text-slate-500 text-lg">or drag and drop</span>

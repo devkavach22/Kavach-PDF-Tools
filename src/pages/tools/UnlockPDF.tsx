@@ -39,7 +39,7 @@ export default function UnlockPDF() {
 
     try {
       const formData = new FormData();
-      formData.append('file', file); // Matches Postman snippet key 'file'
+      formData.append('file', file); 
       formData.append('password', password);
 
       const token = localStorage.getItem("authToken");
@@ -51,18 +51,13 @@ export default function UnlockPDF() {
         }
       });
 
-      // Assuming the API returns the filename in the response structure
-      // Adjust path if your API returns { files: [ { outputFile: "..." } ] } similar to compress
       if (response.data && response.data.files && response.data.files.length > 0) {
-        // Extracting just the filename from the path if necessary, or storing the full path provided by backend
         const outputData = response.data.files[0]; 
-        // If outputData is an object with outputFile, use that, otherwise assume it might be the string
         const finalPath = typeof outputData === 'string' ? outputData : outputData.outputFile;
         
         setUnlockedFileName(finalPath);
         toast({ title: "Success!", description: "PDF unlocked successfully." });
       } else {
-         // Fallback if structure is different, adjust based on actual API response
          toast({ title: "Error", description: "Unexpected response format.", variant: "destructive" });
       }
 
@@ -78,7 +73,7 @@ export default function UnlockPDF() {
   const handleDownload = async () => {
     if (!unlockedFileName) return;
 
-    const filenameToDownload = unlockedFileName.split(/[/\\]/).pop(); // Extract filename from path
+    const filenameToDownload = unlockedFileName.split(/[/\\]/).pop();
     if (!filenameToDownload) {
         toast({ title: "Error", description: "Could not parse filename", variant: "destructive" });
         return;
@@ -115,7 +110,6 @@ export default function UnlockPDF() {
     setFile(null);
     setPassword("");
     setUnlockedFileName(null);
-    // Reset file input value
     const fileInput = document.getElementById('file-upload') as HTMLInputElement;
     if (fileInput) fileInput.value = '';
   };
@@ -129,8 +123,12 @@ export default function UnlockPDF() {
 
       <div className="relative z-10 flex flex-col min-h-screen">
         <Header isAuthenticated={isAuthenticated} isAdmin={isAdmin} onLogout={() => console.log("Logout")} />
-        <main className="flex-1 flex-col py-16">
-          <div className="max-w-4xl mx-auto space-y-6 px-4 sm:px-6 lg:px-8">
+        <br/>
+        <br/>
+        <br/>
+         {/* --- IGNORE ABOVE --- */}
+        <main className="flex-1 flex-col py-10">
+          <div className="max-w-6xl mx-auto space-y-6 px-4 sm:px-6 lg:px-8">
             <Link to="/tools" className="inline-flex items-center bg-white border border-slate-200 rounded-lg px-4 py-2 text-slate-700 gap-2 text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm">
               <ArrowLeft className="h-4 w-4 text-slate-500" /><span className="text-slate-600">Back</span>
             </Link>
@@ -151,10 +149,10 @@ export default function UnlockPDF() {
                   <CardDescription className="text-slate-500">Select a PDF and provide its password</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <div className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors bg-slate-50/50 ${isUnlocking ? 'opacity-50 pointer-events-none border-slate-300' : 'border-slate-300 hover:border-orange-500/50'}`}>
-                    <Upload className="mx-auto h-12 w-12 text-slate-400 mb-4" />
+                  <div className={`border-2 border-dashed rounded-xl p-16 text-center transition-colors bg-slate-50/50 ${isUnlocking ? 'opacity-50 pointer-events-none border-slate-300' : 'border-slate-300 hover:border-orange-500/50'}`}>
+                    <Upload className="mx-auto h-16 w-16 text-slate-400 mb-4" />
                     <label htmlFor="file-upload" className="cursor-pointer">
-                      <span className="text-orange-600 font-semibold hover:text-orange-500">Choose file</span> <span className="text-slate-500">or drag and drop</span>
+                      <span className="text-orange-600 font-semibold hover:text-orange-500 text-lg">Choose file</span> <span className="text-slate-500 text-lg">or drag and drop</span>
                       <input id="file-upload" type="file" accept=".pdf" disabled={isUnlocking} className="hidden" onChange={handleFileSelect} />
                     </label>
                     <p className="text-sm text-slate-500 mt-2">PDF files only</p>
@@ -178,7 +176,7 @@ export default function UnlockPDF() {
                       value={password} 
                       onChange={(e) => setPassword(e.target.value)} 
                       disabled={isUnlocking}
-                      className="bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-orange-500" 
+                      className="bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-orange-500 h-12" 
                     />
                   </div>
 

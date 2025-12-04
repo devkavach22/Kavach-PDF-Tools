@@ -2,8 +2,8 @@ fastapi==0.95.2
 uvicorn[standard]==0.22.0
 
 # Machine Learning & OCR
-torch==2.9.1
-torchvision==0.24.1
+torch==2.2.0+cpu
+torchvision==0.17.0+cpu
 easyocr==1.7.1
 numpy==1.26.4
 pillow==10.4.0

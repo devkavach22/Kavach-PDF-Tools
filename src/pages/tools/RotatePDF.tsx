@@ -31,7 +31,6 @@ export default function RotatePDF() {
   const isAuthenticated = true;
   const isAdmin = false;
 
-  // Load stored state on mount to persist data on refresh
   useEffect(() => {
     const storedData = localStorage.getItem(STORAGE_KEY);
     if (storedData) {
@@ -79,13 +78,8 @@ export default function RotatePDF() {
       const formData = new FormData();
       formData.append('file', file);
       
-      // 1. Calculate the Angle
-      // Right (Clockwise) = 90
-      // Left (Counter-Clockwise) = 270
       const angle = rotation === 'right' ? 90 : 270;
       
-      // 2. Construct the 'ranges' JSON string as required by the backend
-      // We use 1 to 10000 to cover "All Pages" since we don't have the exact page count client-side.
       const ranges = JSON.stringify([
         { 
           from: 1, 
@@ -105,7 +99,6 @@ export default function RotatePDF() {
         }
       });
 
-      // Handle response structure
       const responseData = response.data.files ? response.data.files[0] : response.data;
       
       if (responseData) {
@@ -144,7 +137,6 @@ export default function RotatePDF() {
       return;
     }
 
-    // Extract filename from the full path if necessary
     const rawPath = fileDetails.outputFile;
     const filenameToDownload = rawPath.split(/[/\\]/).pop();
 
@@ -160,7 +152,7 @@ export default function RotatePDF() {
 
       const response = await Instance.get(`/pdf/download/${filenameToDownload}`, {
         headers: { 'Authorization': token ? `${token}` : '' },
-        responseType: 'blob', // Important for file downloads
+        responseType: 'blob', 
       });
       
       const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -202,7 +194,7 @@ export default function RotatePDF() {
         <br/>
         <br/>
         <br/>
-        <main className="flex-1 flex-col py-16">
+        <main className="flex-1 flex-col py-10">
           <div className="max-w-7xl mx-auto space-y-6 px-4 sm:px-6 lg:px-8">
             <Link to="/tools" className="inline-flex items-center bg-white border border-slate-200 rounded-lg px-4 py-2 text-slate-700 gap-2 text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm">
               <ArrowLeft className="h-4 w-4 text-slate-500" /><span className="text-slate-600">Back to Tools</span>
@@ -225,7 +217,7 @@ export default function RotatePDF() {
                       <CardDescription className="text-slate-500">Select the PDF file you want to rotate</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors bg-slate-50/50 ${isRotating ? 'opacity-50 pointer-events-none border-slate-300' : 'border-slate-300 hover:border-orange-500'}`}>
+                      <div className={`border-2 border-dashed rounded-xl p-16 text-center transition-colors bg-slate-50/50 ${isRotating ? 'opacity-50 pointer-events-none border-slate-300' : 'border-slate-300 hover:border-orange-500'}`}>
                         <Upload className="mx-auto h-12 w-12 text-slate-400 mb-2" />
                         <label htmlFor="file-upload" className="cursor-pointer">
                           <span className="text-orange-600 font-semibold hover:text-orange-500">Choose file</span> <span className="text-slate-500">or drag and drop</span>

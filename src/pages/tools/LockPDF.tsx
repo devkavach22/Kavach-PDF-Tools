@@ -185,7 +185,6 @@ export default function LockPDF() {
   return (
     <div className="relative flex flex-col min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-orange-100 selection:text-orange-900 overflow-x-hidden">
       
-      {/* --- AMBIENT BACKGROUND --- */}
       <div className="fixed inset-0 z-0 pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white via-slate-50 to-slate-100" />
         <motion.div animate={{ opacity: [0.4, 0.6, 0.4], scale: [1, 1.1, 1], rotate: [0, 5, 0] }} transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }} className="absolute -top-[20%] left-[10%] w-[60vw] h-[60vw] bg-orange-200/40 rounded-full blur-[120px]" />
@@ -195,9 +194,11 @@ export default function LockPDF() {
 
       <div className="relative z-10 flex flex-col min-h-screen">
         <Header isAuthenticated={isAuthenticated} isAdmin={isAdmin} onLogout={() => console.log("Logout")} />
-      
-        {/* Updated Spacing: pt-32 for header clearance, pb-12 for footer spacing */}
-        <main className="flex-1 flex-col pt-32 pb-12">
+        <br/>
+        <br/>
+        <br/>
+         {/* --- IGNORE ABOVE --- */}
+        <main className="flex-1 flex-col py-12">
           <div className="max-w-7xl mx-auto space-y-6 px-4 sm:px-6 lg:px-8">
           
             <Link
@@ -225,7 +226,7 @@ export default function LockPDF() {
                   </p>
                 </div>
 
-                <Card className="bg-white/80 backdrop-blur-md shadow-xl border border-slate-200 max-w-3xl mx-auto">
+                <Card className="bg-white/80 backdrop-blur-md shadow-xl border border-slate-200 max-w-6xl mx-auto">
                   <CardHeader>
                     <CardTitle className="text-slate-900">Upload PDF File</CardTitle>
                     <CardDescription className="text-slate-500">
@@ -233,11 +234,11 @@ export default function LockPDF() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    <div className="border-2 border-dashed rounded-xl p-12 text-center border-slate-300 hover:border-orange-500 transition-colors bg-slate-50">
-                      <Upload className="mx-auto h-12 w-12 text-slate-400 mb-4" />
+                    <div className="border-2 border-dashed rounded-xl p-24 text-center border-slate-300 hover:border-orange-500 transition-colors bg-slate-50">
+                      <Upload className="mx-auto h-16 w-16 text-slate-400 mb-4" />
                       <label htmlFor="file-upload" className="cursor-pointer">
-                        <span className="text-orange-600 font-semibold hover:text-orange-500 transition-colors">Choose file</span>
-                        {" "}<span className="text-slate-500">or drag and drop</span>
+                        <span className="text-orange-600 font-semibold hover:text-orange-500 transition-colors text-lg">Choose file</span>
+                        {" "}<span className="text-slate-500 text-lg">or drag and drop</span>
                         <input
                           id="file-upload"
                           type="file"

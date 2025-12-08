@@ -8,17 +8,24 @@ dotenv.config();
 
 /*
   Required environment variables (.env):
-
   EMAIL_USER=your_email@gmail.com
   EMAIL_PASS=your_app_password
 */
 
+// ============================================================
+// FIX: Use Port 587 (Standard for Cloud Hosting like Render)
+// ============================================================
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com", // Explicitly define Gmail Host
+  port: 587,              // Standard TLS port (Allowed by Render)
+  secure: false,          // Must be false for port 587
   auth: {
     user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS, // Use Gmail App Password only
+    pass: process.env.EMAIL_PASS, // Ensure this is an APP PASSWORD, not your login password
   },
+  tls: {
+    rejectUnauthorized: false // Helps prevent SSL certificate errors
+  }
 });
 
 /**

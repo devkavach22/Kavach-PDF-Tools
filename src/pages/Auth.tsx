@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Instance from "@/lib/axiosInstance";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import Kavachlogo from "@/assets/KavachLogo.png";
 
 // --- UTILS ---
 function cn(...inputs: ClassValue[]) {
@@ -113,13 +114,11 @@ export default function Auth() {
           
           {/* === Left Column: Form Section === */}
           <div className="flex flex-col justify-center p-8 md:p-12">
-            <div className="flex items-center gap-2 mb-8">
-              <div className="p-2 bg-orange-100 rounded-xl border border-orange-200">
-                  <Flame className="w-6 h-6 text-orange-500 fill-orange-500" />
-              </div>
-              <span className="text-xl font-black text-slate-900 tracking-wide">KAVACH</span>
-            </div>
-
+            <img
+            src={Kavachlogo}
+            className="h-16 w-auto ml-6 object-contain transition-transform duration-300 group-hover:scale-105 drop-shadow-sm"
+            alt="Kavach Logo"
+          />    
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2 bg-slate-100/50 border border-orange-100 rounded-xl p-1 mb-8">
                 <TabsTrigger value="login" className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-orange-600 data-[state=active]:shadow-sm text-slate-500 font-bold transition-all">Login</TabsTrigger>

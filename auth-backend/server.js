@@ -19,7 +19,9 @@ const MONGO_URL = process.env.MONGO_URL;
 const FRONTEND_URL = process.env.FRONTEND_URL;
 
 const allowedOrigins = [
-    "http://localhost:5173", // For local development
+    "http://localhost:5174", // For
+    //  local development
+    "http://localhost:5173",
     "http://localhost:3000", // Alternate local port
     "https://kavachservices.com", // 👈 ADD YOUR LIVE DOMAIN
     "https://www.kavachservices.com",

@@ -30,7 +30,6 @@ app.use(cors({
     origin: allowedOrigins, 
     credentials: true   
 }));    
-app.use(express.static(path.join(__dirname, "dist"))); // or "dist" if you put build there
 
 // app.options("*")
 app.use(express.json());

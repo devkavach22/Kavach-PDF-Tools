@@ -126,17 +126,15 @@ export default function ResetPassword() {
     try {
       setLoading(true);
       
-      // Construct payload matching the API snippet exactly
-      // confirmPassword is required by the backend
       const payload = { 
         email: email, 
         newPassword: newPassword,
         confirmPassword: confirm
       };
 
-      // Use axiosInstance (Instance)
-      // Base URL is .../api, so we add /auth/reset-password
-      await Instance.post("/auth/reset-password", payload);
+      // API Call: POST /reset-password
+      // Removed "/auth" prefix to match your API snippet
+      await Instance.post("/reset-password", payload);
       
       setLoading(false);
       setIsSubmitted(true);

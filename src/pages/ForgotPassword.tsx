@@ -10,7 +10,6 @@ import { twMerge } from "tailwind-merge";
 import Kavachlogo from "@/assets/KavachLogo.png";
 
 // Import your custom Axios Instance
-// Make sure the path matches where you saved axiosInstance.ts
 import Instance from "@/lib/axiosInstance"; 
 
 // --- UTILS ---
@@ -68,9 +67,9 @@ export default function ForgotPassword() {
     try {
       setIsLoading(true);
       
-      // API Call: POST /auth/forgot-password
-      // BaseURL is already /api, so we append /auth/forgot-password
-      const response = await Instance.post("/auth/forgot-password", { 
+      // API Call: POST /forgot-password
+      // Removed "/auth" prefix to match your API snippet
+      const response = await Instance.post("/forgot-password", { 
         email: email 
       });
       
@@ -108,9 +107,9 @@ export default function ForgotPassword() {
     try {
       setIsLoading(true);
 
-      // API Call: PUT /auth/verify-otp
-      // Note: Using PUT as per your provided snippet
-      const response = await Instance.put("/auth/verify-otp", { 
+      // API Call: PUT /verify-otp
+      // Removed "/auth" prefix to match your API snippet
+      const response = await Instance.put("/verify-otp", { 
         email: email, 
         otp: otp 
       });
@@ -118,13 +117,10 @@ export default function ForgotPassword() {
       setIsLoading(false);
       
       // Navigate to Reset Password page
-      // Passing email and verified status state to the next page
       navigate("/reset-password", { 
         state: { 
           email: email, 
-          verified: true,
-          // Optional: If backend returns a temp token for reset, pass it here
-          // token: response.data.token 
+          verified: true
         } 
       });
 
@@ -137,7 +133,7 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="h-screen w-screen flex  items-center justify-center relative overflow-hidden font-sans selection:bg-orange-200 selection:text-orange-900">
+    <div className="h-screen w-screen flex items-center justify-center relative overflow-hidden font-sans selection:bg-orange-200 selection:text-orange-900">
       
       <AnimatedBackground />
 

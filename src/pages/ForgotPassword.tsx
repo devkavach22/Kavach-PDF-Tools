@@ -137,7 +137,7 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="h-screen w-screen flex items-center justify-center relative overflow-hidden font-sans selection:bg-orange-200 selection:text-orange-900">
+    <div className="h-screen w-screen flex  items-center justify-center relative overflow-hidden font-sans selection:bg-orange-200 selection:text-orange-900">
       
       <AnimatedBackground />
 
@@ -145,12 +145,12 @@ export default function ForgotPassword() {
         initial={{ opacity: 0, y: 20 }} 
         animate={{ opacity: 1, y: 0 }} 
         transition={{ duration: 0.6, ease: "easeOut" }} 
-        className="w-full max-w-md relative z-10 px-4"
+        className="w-full max-w-md relative z-10 px-2"
       >
         <GlassCard className="p-8 md:p-10">
           
           <div className="flex flex-col items-center justify-center mb-8 relative">
-            <img src={Kavachlogo} alt="Kavach Logo" className="h-12 w-auto object-contain mb-6 drop-shadow-sm" />
+            <img src={Kavachlogo} alt="Kavach Logo" className="h-16 w-auto object-contain mb-6 drop-shadow-sm" />
             
             <div className="relative">
               <div className="absolute inset-0 bg-orange-500 blur-2xl opacity-20 rounded-full animate-pulse"></div>

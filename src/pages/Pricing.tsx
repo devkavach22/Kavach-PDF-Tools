@@ -2,8 +2,7 @@ import { useState } from "react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { motion } from "framer-motion";
-import { Check } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Check, Zap, Building2, Rocket } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -11,48 +10,45 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-// --- COMPONENT: GLASS CARD ---
-const GlassCard = ({ children, className = "" }: any) => {
-  return (
-    <div
-      className={cn(
-        "relative overflow-hidden rounded-[32px] border border-orange-100/60 bg-white/60 backdrop-blur-xl shadow-xl shadow-orange-900/5",
-        className
-      )}
-    >
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-orange-400/40 to-transparent opacity-50" />
-      <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent pointer-events-none" />
-      {children}
-    </div>
-  );
-};
-
 const plans = [
-    { name: "Basic", price: "$0", period: "/mo", desc: "For casual users", features: ["3 Tasks per day", "Standard Speed", "Ad-supported"], highlight: false },
-    { name: "Pro Shield", price: "$12", period: "/mo", desc: "For power users", features: ["Unlimited Tasks", "OCR & eSign", "No Ads", "Priority Support", "256-bit Encryption"], highlight: true, badge: "Most Popular" },
-    { name: "Enterprise", price: "$1499", desc: "Scalable security for large teams.", features: ["API Access", "SSO Integration", "Dedicated Server Instance", "Audit Logs", "24/7 Dedicated Support"], highlight: false },
+    { 
+      name: "Starter", 
+      monthlyPrice: 2999, 
+      yearlyPrice: 2499, // Effective monthly price when billed yearly
+      icon: Rocket,
+      desc: "Perfect for startups and small teams.", 
+      features: ["Generate 50 Reports / month", "Basic NLP Summarization", "3 Team Members", "Email Support", "Standard Export (PDF)"], 
+      highlight: false 
+    },
+    { 
+      name: "Growth", 
+      monthlyPrice: 8999,
+      yearlyPrice: 7499,
+      icon: Zap,
+      desc: "For scaling businesses needing deep insights.", 
+      features: ["Unlimited Reports", "Advanced Sentiment Analysis", "Custom Branding", "Priority Support", "API Access (100k calls)"], 
+      highlight: true, 
+      badge: "Most Popular" 
+    },
+    { 
+      name: "Enterprise", 
+      monthlyPrice: "Custom", 
+      yearlyPrice: "Custom",
+      icon: Building2,
+      desc: "Bank-grade security & dedicated infrastructure.", 
+      features: ["Unlimited API Volume", "On-Premise Deployment", "Dedicated Success Manager", "SSO & Audit Logs", "99.99% Uptime SLA"], 
+      highlight: false 
+    },
 ];
 
 export default function Pricing() {
   const [annual, setAnnual] = useState(true);
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FFF8F0] text-slate-900 font-sans overflow-x-hidden relative selection:bg-orange-200 selection:text-orange-900">
+    <div className="min-h-screen flex flex-col bg-[#FFFAF4] text-slate-900 font-sans relative overflow-x-hidden">
       
-      {/* --- BACKGROUND EFFECTS --- */}
-      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-        <motion.div 
-            animate={{ scale: [1, 1.2, 1], rotate: [0, 90, 0], opacity: [0.3, 0.5, 0.3] }}
-            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-            className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-gradient-to-r from-orange-200 to-amber-100 rounded-full blur-[100px] opacity-50" 
-        />
-         <motion.div 
-            animate={{ scale: [1, 1.3, 1], rotate: [0, -90, 0], opacity: [0.3, 0.5, 0.3] }}
-            transition={{ duration: 25, repeat: Infinity, ease: "linear", delay: 2 }}
-            className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] bg-gradient-to-l from-red-200 to-orange-100 rounded-full blur-[100px] opacity-50" 
-        />
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-30 mix-blend-soft-light"></div>
-      </div>
+      {/* --- GLOW EFFECTS --- */}
+      <div className="absolute top-0 inset-x-0 h-[500px] bg-gradient-to-b from-orange-100/50 to-transparent pointer-events-none" />
       
       <div className="relative z-50"><Header /></div>
 
@@ -65,62 +61,92 @@ export default function Pricing() {
           >
             Simple, Transparent <span className="text-orange-600">Pricing</span>
           </motion.h1>
-          <motion.p 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="text-slate-500 mb-10 text-lg font-medium"
-          >
-            Choose the shield that fits your workflow.
-          </motion.p>
+          <p className="text-slate-500 mb-10 text-xl font-medium">
+            Choose the plan that fits your growth. Prices in INR (₹).
+          </p>
 
           {/* Toggle */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="flex justify-center items-center gap-4 mb-16"
-          >
+          <div className="flex justify-center items-center gap-4 mb-16">
             <span className={`text-sm font-bold ${!annual ? 'text-slate-900' : 'text-slate-400'}`}>Monthly</span>
-            <div onClick={() => setAnnual(!annual)} className="w-14 h-7 rounded-full bg-slate-200 border border-slate-300 relative cursor-pointer transition-colors hover:border-orange-500/50">
-                <motion.div animate={{ x: annual ? 28 : 2 }} className="absolute top-1 left-0 w-5 h-5 rounded-full bg-orange-500 shadow-lg shadow-orange-500/50" />
-            </div>
-            <span className={`text-sm font-bold ${annual ? 'text-slate-900' : 'text-slate-400'}`}>Yearly <span className="text-orange-600 text-xs ml-1 font-extrabold">(Save 20%)</span></span>
-          </motion.div>
+            <button onClick={() => setAnnual(!annual)} className="w-14 h-7 rounded-full bg-slate-200 p-1 relative transition-colors hover:bg-slate-300">
+                <motion.div 
+                  animate={{ x: annual ? 28 : 0 }} 
+                  className="w-5 h-5 rounded-full bg-orange-500 shadow-md" 
+                />
+            </button>
+            <span className={`text-sm font-bold ${annual ? 'text-slate-900' : 'text-slate-400'}`}>Yearly <span className="text-orange-600 text-xs ml-1 font-extrabold">(Save ~17%)</span></span>
+          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto items-center">
             {plans.map((plan, idx) => (
-              <GlassCard 
-                key={idx} 
-                className={`flex flex-col p-8 text-left ${plan.highlight ? 'bg-white/80 border-orange-400/50 shadow-orange-500/20 scale-105 z-10' : 'bg-white/40'}`}
+              <motion.div 
+                key={idx}
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.1 }}
+                className={cn(
+                  "relative p-8 rounded-[32px] text-left flex flex-col h-full border transition-all duration-300",
+                  plan.highlight 
+                    ? "bg-white shadow-2xl shadow-orange-500/20 border-orange-200 scale-105 z-10" 
+                    : "bg-white/60 backdrop-blur-md border-orange-100 hover:border-orange-200"
+                )}
               >
                 {plan.highlight && (
-                    <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-orange-500 to-red-600" />
+                    <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-orange-500 to-red-500" />
                 )}
-                {plan.highlight && <div className="absolute top-4 right-4 px-3 py-1 bg-orange-100 text-orange-700 text-[10px] font-bold uppercase tracking-widest rounded-full border border-orange-200">{plan.badge}</div>}
+                {plan.highlight && <div className="absolute top-5 right-5 px-3 py-1 bg-orange-100 text-orange-700 text-[10px] font-bold uppercase tracking-widest rounded-full">{plan.badge}</div>}
                 
-                <h3 className={`text-xl font-bold mb-2 ${plan.highlight ? 'text-orange-600' : 'text-slate-700'}`}>{plan.name}</h3>
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-6 ${plan.highlight ? 'bg-orange-100 text-orange-600' : 'bg-slate-100 text-slate-600'}`}>
+                    <plan.icon size={24} />
+                </div>
+
+                <h3 className="text-xl font-bold text-slate-900 mb-2">{plan.name}</h3>
                 
                 <div className="flex items-baseline gap-1 mb-2">
-                   <span className="text-4xl font-black text-slate-900">{annual && plan.price !== "$0" ? `$${parseInt(plan.price.slice(1)) * 10}` : plan.price}</span>
-                   <span className="text-slate-500 font-bold">{annual && plan.price !== "$0" ? "/yr" : plan.period}</span>
+                   {typeof plan.monthlyPrice === 'number' ? (
+                     <>
+                       <span className="text-4xl font-black text-slate-900">
+                         ₹{annual ? plan.yearlyPrice.toLocaleString('en-IN') : plan.monthlyPrice.toLocaleString('en-IN')}
+                       </span>
+                       <span className="text-slate-500 font-bold">/mo</span>
+                     </>
+                   ) : (
+                     <span className="text-4xl font-black text-slate-900">{plan.monthlyPrice}</span>
+                   )}
                 </div>
                 
-                <p className="text-slate-500 text-sm mb-8 font-medium">{plan.desc}</p>
+                {annual && typeof plan.monthlyPrice === 'number' && (
+                    <p className="text-xs text-orange-600 font-bold mb-8">
+                        Billed ₹{(plan.yearlyPrice * 12).toLocaleString('en-IN')} yearly
+                    </p>
+                )}
+                {!annual && typeof plan.monthlyPrice === 'number' && (
+                    <p className="text-xs text-slate-400 font-bold mb-8">
+                        Billed monthly
+                    </p>
+                )}
+                {typeof plan.monthlyPrice !== 'number' && <div className="mb-8"></div>}
+                
+                <p className="text-slate-500 text-sm mb-6 font-medium border-t border-slate-100 pt-6">{plan.desc}</p>
                 
                 <ul className="space-y-4 mb-8 flex-1">
                     {plan.features.map((f, i) => (
-                        <li key={i} className="flex items-start gap-3 text-sm text-slate-600 font-medium">
-                            <Check className={`w-5 h-5 shrink-0 ${plan.highlight ? 'text-orange-500' : 'text-slate-400'}`} /> 
+                        <li key={i} className="flex items-start gap-3 text-sm text-slate-700 font-medium">
+                            <Check className="w-5 h-5 shrink-0 text-orange-500" /> 
                             {f}
                         </li>
                     ))}
                 </ul>
                 
-                <Button className={`w-full rounded-xl font-bold h-12 ${plan.highlight ? 'bg-gradient-to-r from-orange-600 to-red-600 text-white hover:shadow-lg hover:shadow-orange-500/20' : 'bg-white border-2 border-slate-200 text-slate-700 hover:border-orange-300 hover:text-orange-600'}`}>
-                    Choose {plan.name}
-                </Button>
-              </GlassCard>
+                <button className={cn(
+                    "w-full py-4 rounded-xl font-bold transition-all",
+                    plan.highlight 
+                        ? "bg-gradient-to-r from-orange-600 to-red-600 text-white hover:shadow-lg hover:shadow-orange-500/30" 
+                        : "bg-slate-50 text-slate-700 hover:bg-orange-50 hover:text-orange-700"
+                )}>
+                    {plan.name === "Enterprise" ? "Contact Sales" : "Get Started"}
+                </button>
+              </motion.div>
             ))}
           </div>
         </div>

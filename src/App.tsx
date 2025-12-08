@@ -59,7 +59,7 @@ const App = () => (
           <Route path="/system-setting" element={<SystemSettingsPage />} />
           <Route path="/tools" element={<Tools />} />
           {/* <Route path="/forgot-password" element={<ForgotPassword />} /> */}
-          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/forgot_password" element={<ForgotPassword />} />
 
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/tools/merge" element={<MergePDF />} />

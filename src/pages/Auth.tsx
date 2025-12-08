@@ -144,7 +144,7 @@ export default function Auth() {
                       <div className="space-y-2 group">
                         <div className="flex justify-between items-center">
                           <Label htmlFor="password" className="text-slate-700 font-bold group-focus-within:text-orange-600">Password</Label>
-                          <a href="/forgot-password" className="text-sm text-orange-600 hover:text-orange-700 font-bold hover:underline">Forgot?</a>
+                          <a href="/forgot_password" className="text-sm text-orange-600 hover:text-orange-700 font-bold hover:underline">Forgot?</a>
                         </div>
                         <div className="relative">
                           <Input

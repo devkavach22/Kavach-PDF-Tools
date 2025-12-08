@@ -63,7 +63,7 @@ export default function ResetPassword() {
   // Optional: Redirect if no email found in state (security measure)
   useEffect(() => {
     if (!email) {
-      // navigate("/forgot-password"); 
+      navigate("/forgot_password"); 
     }
   }, [email, navigate]);
 

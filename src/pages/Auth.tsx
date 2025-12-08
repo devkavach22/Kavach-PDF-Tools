@@ -116,7 +116,7 @@ export default function Auth() {
           <div className="flex flex-col justify-center p-8 md:p-12">
             <img
             src={Kavachlogo}
-            className="h-16 w-auto ml-6 object-contain transition-transform duration-300 group-hover:scale-105 drop-shadow-sm"
+            className="h-16 w-auto ml-6 pb-2 object-contain transition-transform duration-300 group-hover:scale-105 drop-shadow-sm"
             alt="Kavach Logo"
           />    
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

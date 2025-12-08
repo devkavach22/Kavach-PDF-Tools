@@ -9,9 +9,10 @@ const elasticClient = new Client({
     username: process.env.ELASTIC_USERNAME,
     password: process.env.ELASTIC_PASSWORD
   },
-  tls: {
-    rejectUnauthorized: false
-  }
+  tls: { rejectUnauthorized: false }, // only if self-signed
+  sniffOnStart: false,
+  sniffInterval: false,
+  sniffOnConnectionFault: false,
 });
 
 export default elasticClient;

@@ -6,6 +6,7 @@ import cookieParser from "cookie-parser";
 import authRoutes from "./routes/authRoutes.js";
 import pdfRoutes from "./routes/pdfRoutes.js";
 import searchRoutes from "./routes/searchRoutes.js";
+import passwordRoutes from "./routes/passwordRoutes.js"; // Import password routes
 import { runIndexingPipeline } from "./search/indexingPipeline.js";
 import path from "path";
 
@@ -42,6 +43,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api/auth",authRoutes);
 app.use("/api/pdf",pdfRoutes);
 app.use("/api/search",searchRoutes);
+app.use("/api",passwordRoutes);
 
 mongoose.connect(MONGO_URL, {
     useNewUrlParser: true,

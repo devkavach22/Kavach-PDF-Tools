@@ -1,6 +1,6 @@
 // services/mailService.js
 
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import dotenv from "dotenv";
 import { otpTemplate } from "../utils/sendEmail.js";
 
@@ -9,36 +9,29 @@ dotenv.config();
 /*
   Required environment variables (.env):
 
-  EMAIL_USER=your_email@gmail.com
-  EMAIL_PASS=your_app_password
+  RESEND_API_KEY=re_*******************
+  (You will get this from https://resend.com)
 */
 
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS, // Use Gmail App Password only
-  },
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 /**
- * Sends a generic email using Nodemailer
+ * Sends an email using Resend API
  * @param {string} to - recipient email
- * @param {string} subject - subject line
- * @param {string} html - HTML email body
+ * @param {string} subject - email subject
+ * @param {string} html - HTML content
  */
 export const sendEmail = async (to, subject, html) => {
   try {
-    const mailOptions = {
-      from: `"Support Team" <${process.env.EMAIL_USER}>`,
+    const response = await resend.emails.send({
+      from: "Support Team <onboarding@resend.dev>", // can customize later
       to,
       subject,
       html,
-    };
+    });
 
-    await transporter.sendMail(mailOptions);
-
-    console.log(`Email sent to: ${to}`);
+    console.log("Email sent:", response);
+    return response;
   } catch (error) {
     console.error("Email sending error:", error);
     throw new Error("Failed to send email");
@@ -46,9 +39,9 @@ export const sendEmail = async (to, subject, html) => {
 };
 
 /**
- * Sends OTP email using prebuilt HTML template
+ * Sends an OTP email using predefined HTML template
  * @param {string} email - receiver address
- * @param {number|string} otp - generated OTP
+ * @param {string|number} otp - OTP value
  */
 export const sendOtpEmail = async (email, otp) => {
   try {
